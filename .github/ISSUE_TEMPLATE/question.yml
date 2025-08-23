@@ -1,0 +1,95 @@
+name: Question/Support
+description: Ask a question or get help with using the Network Switch app
+title: "[QUESTION] "
+labels: ["question", "support"]
+assignees:
+  - aunchagaonkar
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about using Network Switch? We're here to help! Please provide as much detail as possible.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Prerequisites
+      options:
+        - label: I have searched existing issues to see if my question has been answered
+          required: true
+        - label: I have read the README and documentation
+          required: true
+
+  - type: dropdown
+    id: question-type
+    attributes:
+      label: Question Type
+      description: What type of question do you have?
+      options:
+        - Installation/Setup
+        - Usage/How-to
+        - Root/Shizuku Setup
+        - Network Switching
+        - Troubleshooting
+        - Compatibility
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: Please describe your question in detail...
+    validations:
+      required: true
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Android Version
+      description: What version of Android are you running?
+      placeholder: "e.g., Android 14, Android 13, etc."
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App Version
+      description: What version of Network Switch are you using?
+      placeholder: "e.g., v1.0.9"
+
+  - type: input
+    id: device-model
+    attributes:
+      label: Device Model
+      description: What device model are you using?
+      placeholder: "e.g., Samsung Galaxy S24, Pixel 8 Pro, etc."
+
+  - type: dropdown
+    id: root-method
+    attributes:
+      label: Root/Permission Method
+      description: How are you providing root access to the app?
+      options:
+        - Root (Magisk)
+        - Root (SuperSU)
+        - Shizuku
+        - Not rooted/No special permissions
+        - Not sure
+        - Other (please specify)
+
+  - type: textarea
+    id: what-tried
+    attributes:
+      label: What Have You Tried?
+      description: What steps have you already taken to solve this issue?
+      placeholder: Describe what you've already tried...
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or examples that might be helpful
+      placeholder: Any additional information that might help us answer your question...

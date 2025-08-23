@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/aunchagaonkar/NetworkSwitch/blob/main/README.md
+    about: Read the app documentation and setup guide
+  - name: Security Issues
+    url: mailto:ameya21unchagaonkar@gmail.com
+    about: For security-related issues, please email us directly instead of creating a public issue

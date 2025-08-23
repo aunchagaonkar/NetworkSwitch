@@ -1,0 +1,175 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+      
+    - name: Extract version from tag
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/}
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "version_code=$(echo "$VERSION" | sed -e 's/v//' -e 's/\.//g')" >> $GITHUB_OUTPUT
+        
+    - name: Update version in build.gradle.kts
+      run: |
+        VERSION_NAME=${{ steps.get_version.outputs.version }}
+        VERSION_CODE=${{ steps.get_version.outputs.version_code }}
+        sed -i "s/versionCode = [0-9]*/versionCode = $VERSION_CODE/" app/build.gradle.kts
+        sed -i "s/versionName = \".*\"/versionName = \"${VERSION_NAME#v}\"/" app/build.gradle.kts
+
+    - name: Run tests
+      run: ./gradlew test
+      
+    - name: Build release APK
+      run: ./gradlew assembleRelease
+      
+    - name: Sign APK
+      env:
+        KEYSTORE_BASE64: ${{ secrets.SIGNING_KEY_STORE_BASE64 }}
+        KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+        KEYSTORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+        KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+      run: |
+        if [ -n "$KEYSTORE_BASE64" ]; then
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > app/keystore.jks
+          BUILD_TOOLS_VERSION=$(ls $ANDROID_HOME/build-tools/ | sort -V | tail -n 1)
+          INPUT_APK="app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "$INPUT_APK" ]; then
+             echo "Error: Unsigned APK file not found."
+             exit 1
+          fi
+          $ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner sign \
+            --ks app/keystore.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass pass:"$KEYSTORE_PASSWORD" \
+            --key-pass pass:"$KEY_PASSWORD" \
+            --out app/build/outputs/apk/release/app-release-signed.apk \
+            "$INPUT_APK"
+        fi
+        
+    - name: Rename APK
+      run: |
+        VERSION=${{ steps.get_version.outputs.version }}
+        RELEASE_DIR="app/build/outputs/apk/release"
+        FINAL_APK_NAME="NetworkSwitch-${VERSION}.apk"
+        if [ -f "$RELEASE_DIR/app-release-signed.apk" ]; then
+          mv "$RELEASE_DIR/app-release-signed.apk" "$RELEASE_DIR/$FINAL_APK_NAME"
+        elif [ -f "$RELEASE_DIR/app-release-unsigned.apk" ]; then
+          mv "$RELEASE_DIR/app-release-unsigned.apk" "$RELEASE_DIR/$FINAL_APK_NAME"
+        else
+          echo "Error: No APK file found to rename."
+          exit 1
+        fi
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        CURRENT_TAG="${{ steps.get_version.outputs.version }}"
+        REPO_URL="https://github.com/${{ github.repository }}"
+        
+        git fetch --unshallow --tags --force 2>/dev/null || git fetch --tags --force
+        
+        PREVIOUS_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "^${CURRENT_TAG}$" | head -n 1)
+
+        if [ -z "$PREVIOUS_TAG" ]; then
+          CHANGELOG_BODY=""
+          while IFS= read -r commit; do
+            HASH=$(echo "$commit" | cut -d' ' -f1)
+            MESSAGE=$(echo "$commit" | cut -d' ' -f2-)
+            SHORT_HASH=$(echo "$HASH" | cut -c1-7)
+            CHANGELOG_BODY="${CHANGELOG_BODY}- [\`${SHORT_HASH}\`](${REPO_URL}/commit/${HASH}) ${MESSAGE}"$'\n'
+          done <<< "$(git log --pretty=format:"%H %s" "$CURRENT_TAG" --reverse)"
+        else
+          CHANGELOG_BODY=""
+          while IFS= read -r commit; do
+            if [ -n "$commit" ]; then
+              HASH=$(echo "$commit" | cut -d' ' -f1)
+              MESSAGE=$(echo "$commit" | cut -d' ' -f2-)
+              SHORT_HASH=$(echo "$HASH" | cut -c1-7)
+              CHANGELOG_BODY="${CHANGELOG_BODY}- [\`${SHORT_HASH}\`](${REPO_URL}/commit/${HASH}) ${MESSAGE}"$'\n'
+            fi
+          done <<< "$(git log --pretty=format:"%H %s" "${PREVIOUS_TAG}..${CURRENT_TAG}" --reverse)"
+          
+          if [ -z "$CHANGELOG_BODY" ]; then
+            while IFS= read -r hash; do
+              if [ -n "$hash" ]; then
+                MESSAGE=$(git log -1 --pretty=format:"%s" "$hash")
+                SHORT_HASH=$(echo "$hash" | cut -c1-7)
+                CHANGELOG_BODY="${CHANGELOG_BODY}- [\`${SHORT_HASH}\`](${REPO_URL}/commit/${hash}) ${MESSAGE}"$'\n'
+              fi
+            done <<< "$(git rev-list "${PREVIOUS_TAG}..${CURRENT_TAG}" --reverse)"
+          fi
+        fi
+
+        CHANGELOG_BODY=$(echo "$CHANGELOG_BODY" | sed -z '$ s/\n$//')
+
+        if [ -z "$CHANGELOG_BODY" ]; then
+          CHANGELOG_BODY="- No changes in this release."
+        fi
+
+        {
+          echo "changelog<<EOF"
+          echo "$CHANGELOG_BODY"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.get_version.outputs.version }}
+        name: NetworkSwitch ${{ steps.get_version.outputs.version }}
+        body: |
+          ## Changes in this release
+          
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ## Installation
+          Download the APK file below and install it on your Android device.
+        files: |
+          app/build/outputs/apk/release/NetworkSwitch-*.apk
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
