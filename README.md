@@ -106,8 +106,8 @@ settings.gradle.kts           # Project settings
 
 ```bash
 # Clone the repository
-git clone https://github.com/aunchagaonkar/Network-Switch.git
-cd Network-Switch
+git clone https://github.com/aunchagaonkar/NetworkSwitch.git
+cd NetworkSwitch
 
 # Build debug APK
 ./gradlew assembleDebug
@@ -117,7 +117,7 @@ cd Network-Switch
 ```
 
 ## TODO
-- [ ] Add unit tests for all core components
+- [x] Add unit tests for all core components
 - [ ] Add network speed monitoring
 - [ ] Implement network statistics tracking
 - [ ] Add support for 3G fallback modes
@@ -147,6 +147,14 @@ Contributions are welcome! Please follow these guidelines:
 - Follow Material Design guidelines for UI changes
 
 ### Testing
+This project includes a suite of unit tests to ensure code quality and stability.
+
+To run the unit tests, execute the following command from the root of the project:
+
+```bash
+./gradlew test
+```
+
 - Add unit tests for new functionality
 - Test on both rooted and non-rooted devices
 - Verify compatibility across different Android versions
