@@ -26,7 +26,7 @@ android {
         // Resource optimization
         resourceConfigurations += listOf("en", "xxhdpi")
         
-        // Disable unnecessary features for smaller APK
+        // Disable unnecessary features
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -82,6 +82,14 @@ android {
         kotlinCompilerExtensionVersion = libs.versions.compose.get()
     }
     
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+            isIncludeAndroidResources = true
+        }
+        animationsDisabled = true
+    }
+    
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -108,6 +116,9 @@ android {
         // JNI libraries optimization
         jniLibs {
             useLegacyPackaging = false
+            // Exclude native libraries from packaging
+            excludes += "**/libandroidx.graphics.path.so"
+            excludes += "**/libdatastore_shared_counter.so"
         }
     }
     
@@ -161,6 +172,8 @@ dependencies {
     
     // Testing
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -168,4 +181,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+    // Hilt Testing
+    testImplementation(libs.hilt.android.testing)
+    kaptTest(libs.hilt.compiler)
 }
