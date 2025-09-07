@@ -116,7 +116,7 @@ android {
         // JNI libraries optimization
         jniLibs {
             useLegacyPackaging = false
-            // Exclude native libraries from stripping
+            // Exclude native libraries from packaging
             excludes += "**/libandroidx.graphics.path.so"
             excludes += "**/libdatastore_shared_counter.so"
         }
