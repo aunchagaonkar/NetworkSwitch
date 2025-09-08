@@ -53,6 +53,7 @@ The app provides two methods of operation:
 ## Installation
 
 [<img src="media/get_it_github.png" alt="Get it on GitHub" height="80">](https://github.com/aunchagaonkar/NetworkSwitch/releases)
+[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" height="80" alt="Get it at IzzyOnDroid">](https://apt.izzysoft.de/packages/com.supernova.networkswitch)
 
 1. Download the latest APK from the Releases page
 2. Install on your Android device
