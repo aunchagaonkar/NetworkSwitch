@@ -2,6 +2,12 @@
 <img src="media/app_icon.png" width="160" height="160" style="display: block; margin: 0 auto"/>
 <h1>Network Switch</h1>
 <p>Modern Android app for 4G/5G network mode switching</p>
+
+[![Build Status](https://img.shields.io/github/actions/workflow/status/aunchagaonkar/NetworkSwitch/build.yml)](https://github.com/aunchagaonkar/NetworkSwitch/actions)
+[![License](https://img.shields.io/github/license/aunchagaonkar/NetworkSwitch)](https://github.com/aunchagaonkar/NetworkSwitch/blob/main/LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/aunchagaonkar/NetworkSwitch/total)](https://github.com/aunchagaonkar/NetworkSwitch/releases)
+[![Release](https://img.shields.io/github/v/release/aunchagaonkar/NetworkSwitch)](https://github.com/aunchagaonkar/NetworkSwitch/releases/latest)
+
 </div>
 
 ---
