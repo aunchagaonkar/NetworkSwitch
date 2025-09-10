@@ -64,6 +64,7 @@ The app provides two methods of operation:
 [<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="55" align="center">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/aunchagaonkar/NetworkSwitch/)
 
 </div>
+
 1. Download the latest APK from the Releases page
 2. Install on your Android device
 3. Choose your preferred control method:
