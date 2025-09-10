@@ -57,10 +57,13 @@ The app provides two methods of operation:
 - ADB or Wireless ADB access to start Shizuku
 
 ## Installation
+<div align="center">
 
-[<img src="media/get_it_github.png" alt="Get it on GitHub" height="80">](https://github.com/aunchagaonkar/NetworkSwitch/releases)
-[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" height="80" alt="Get it at IzzyOnDroid">](https://apt.izzysoft.de/packages/com.supernova.networkswitch)
+[<img src="media/get_it_github.png" alt="Get it on GitHub" height="80" align="center">](https://github.com/aunchagaonkar/NetworkSwitch/releases)
+[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="Get it at IzzyOnDroid" height="80" align="center">](https://apt.izzysoft.de/packages/com.supernova.networkswitch)
+[<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="55" align="center">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/aunchagaonkar/NetworkSwitch/)
 
+</div>
 1. Download the latest APK from the Releases page
 2. Install on your Android device
 3. Choose your preferred control method:
