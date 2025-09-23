@@ -6,12 +6,12 @@ import android.os.Build
 import android.os.ServiceManager
 import androidx.annotation.Keep
 import com.android.internal.telephony.ITelephony
-import com.supernova.networkswitch.IFivegController
+import com.supernova.networkswitch.IShizukuController
 
 /**
  * Shizuku service for network control operations
  */
-class ShizukuControllerService() : IFivegController.Stub() {
+class ShizukuControllerService() : IShizukuController.Stub() {
 
     companion object {
         private val iTelephony by lazy {

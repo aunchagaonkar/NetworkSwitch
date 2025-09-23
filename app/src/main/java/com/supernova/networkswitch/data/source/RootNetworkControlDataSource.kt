@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
-import com.supernova.networkswitch.INetworkController
+import com.supernova.networkswitch.IRootController
 import com.supernova.networkswitch.service.RootNetworkControllerService
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.util.Utils
@@ -25,7 +25,7 @@ class RootNetworkControlDataSource @Inject constructor(
     @ApplicationContext private val context: Context
 ) : NetworkControlDataSource {
     
-    private var networkController: INetworkController? = null
+    private var networkController: IRootController? = null
     private var isServiceConnected = false
 
     override suspend fun checkCompatibility(subId: Int): CompatibilityState {
@@ -56,7 +56,7 @@ class RootNetworkControlDataSource @Inject constructor(
         isServiceConnected = false
     }
 
-    private suspend fun getNetworkController(): INetworkController? {
+    private suspend fun getNetworkController(): IRootController? {
         if (networkController != null && isServiceConnected) {
             return networkController
         }
@@ -69,7 +69,7 @@ class RootNetworkControlDataSource @Inject constructor(
                     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                         if (!isResumed) {
                             isResumed = true
-                            networkController = INetworkController.Stub.asInterface(service)
+                            networkController = IRootController.Stub.asInterface(service)
                             isServiceConnected = true
                             continuation.resume(networkController)
                         }

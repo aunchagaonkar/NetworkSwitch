@@ -19,8 +19,8 @@
 }
 
 # Keep AIDL interfaces
--keep class com.supernova.networkswitch.INetworkController { *; }
--keep class com.supernova.networkswitch.IFivegController { *; }
+-keep class com.supernova.networkswitch.IRootController { *; }
+-keep class com.supernova.networkswitch.IShizukuController { *; }
 
 # Keep classes that interact with system APIs
 -keep class com.supernova.networkswitch.service.** { *; }

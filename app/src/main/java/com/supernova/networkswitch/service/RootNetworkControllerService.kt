@@ -6,7 +6,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.ServiceManager
 import com.android.internal.telephony.ITelephony
-import com.supernova.networkswitch.INetworkController
+import com.supernova.networkswitch.IRootController
 import com.topjohnwu.superuser.ipc.RootService
 
 /**
@@ -70,7 +70,7 @@ class RootNetworkControllerService : RootService() {
         }
     }
 
-    override fun onBind(intent: Intent) = object : INetworkController.Stub() {
+    override fun onBind(intent: Intent) = object : IRootController.Stub() {
         
         override fun compatibilityCheck(subId: Int): Boolean {
             return try {

@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.IBinder
-import com.supernova.networkswitch.IFivegController
+import com.supernova.networkswitch.IShizukuController
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.service.ShizukuControllerService
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +26,7 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
     @ApplicationContext private val context: Context
 ) : NetworkControlDataSource {
     
-    private var userService: IFivegController? = null
+    private var userService: IShizukuController? = null
     private val _isConnected = MutableStateFlow(false)
     val isConnected = _isConnected.asStateFlow()
     
@@ -125,7 +125,7 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
                 val serviceConnection = object : ServiceConnection {
                     override fun onServiceConnected(componentName: ComponentName?, binder: IBinder?) {
                         if (binder != null && binder.pingBinder()) {
-                            userService = IFivegController.Stub.asInterface(binder)
+                            userService = IShizukuController.Stub.asInterface(binder)
                             _isConnected.value = true
                             if (continuation.isActive) {
                                 continuation.resume(true)
