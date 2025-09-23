@@ -16,12 +16,12 @@ interface NetworkControlRepository {
     /**
      * Get current 5G enabled state
      */
-    suspend fun getFivegEnabled(subId: Int): Boolean
+    suspend fun getNetworkState(subId: Int): Boolean
     
     /**
      * Set 5G enabled state
      */
-    suspend fun setFivegEnabled(subId: Int, enabled: Boolean): Result<Unit>
+    suspend fun setNetworkState(subId: Int, enabled: Boolean): Result<Unit>
     
     /**
      * Observe connection state changes

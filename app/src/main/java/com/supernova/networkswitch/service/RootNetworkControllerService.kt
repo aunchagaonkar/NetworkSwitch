@@ -96,7 +96,7 @@ class RootNetworkControllerService : RootService() {
             }
         }
 
-        override fun getFivegEnabled(subId: Int): Boolean {
+        override fun getNetworkState(subId: Int): Boolean {
             return try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     val currentTypes = iTelephony.getAllowedNetworkTypesForReason(subId, reasonUser)
@@ -112,7 +112,7 @@ class RootNetworkControllerService : RootService() {
             }
         }
 
-        override fun setFivegEnabled(subId: Int, enabled: Boolean) {
+        override fun setNetworkState(subId: Int, enabled: Boolean) {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     if (enabled) {

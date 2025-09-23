@@ -36,14 +36,14 @@ class RootNetworkControlDataSource @Inject constructor(
         }
     }
 
-    override suspend fun getFivegEnabled(subId: Int): Boolean {
+    override suspend fun getNetworkState(subId: Int): Boolean {
         val controller = getNetworkController()
-        return controller?.getFivegEnabled(subId) ?: false
+        return controller?.getNetworkState(subId) ?: false
     }
 
-    override suspend fun setFivegEnabled(subId: Int, enabled: Boolean) {
+    override suspend fun setNetworkState(subId: Int, enabled: Boolean) {
         val controller = getNetworkController()
-        controller?.setFivegEnabled(subId, enabled)
+        controller?.setNetworkState(subId, enabled)
     }
 
     override fun isConnected(): Boolean = isServiceConnected

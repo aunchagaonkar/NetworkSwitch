@@ -56,24 +56,24 @@ class NetworkUseCasesTest {
 
     @Test
     fun `ToggleNetworkModeUseCase toggles from true to false`() = runTest {
-        coEvery { networkControlRepository.getFivegEnabled(any()) } returns true
-        coEvery { networkControlRepository.setFivegEnabled(any(), false) } returns Result.success(Unit)
+        coEvery { networkControlRepository.getNetworkState(any()) } returns true
+        coEvery { networkControlRepository.setNetworkState(any(), false) } returns Result.success(Unit)
 
         val result = toggleNetworkModeUseCase(1)
 
-        coVerify { networkControlRepository.setFivegEnabled(1, false) }
+        coVerify { networkControlRepository.setNetworkState(1, false) }
         assertTrue(result.isSuccess)
         assertEquals(false, result.getOrNull())
     }
 
     @Test
     fun `ToggleNetworkModeUseCase toggles from false to true`() = runTest {
-        coEvery { networkControlRepository.getFivegEnabled(any()) } returns false
-        coEvery { networkControlRepository.setFivegEnabled(any(), true) } returns Result.success(Unit)
+        coEvery { networkControlRepository.getNetworkState(any()) } returns false
+        coEvery { networkControlRepository.setNetworkState(any(), true) } returns Result.success(Unit)
 
         val result = toggleNetworkModeUseCase(1)
 
-        coVerify { networkControlRepository.setFivegEnabled(1, true) }
+        coVerify { networkControlRepository.setNetworkState(1, true) }
         assertTrue(result.isSuccess)
         assertEquals(true, result.getOrNull())
     }
@@ -81,7 +81,7 @@ class NetworkUseCasesTest {
     @Test
     fun `ToggleNetworkModeUseCase handles failure`() = runTest {
         val exception = RuntimeException("Test Exception")
-        coEvery { networkControlRepository.getFivegEnabled(any()) } throws exception
+        coEvery { networkControlRepository.getNetworkState(any()) } throws exception
 
         val result = toggleNetworkModeUseCase(1)
 
@@ -91,7 +91,7 @@ class NetworkUseCasesTest {
 
     @Test
     fun `GetNetworkStateUseCase returns state from repository`() = runTest {
-        coEvery { networkControlRepository.getFivegEnabled(any()) } returns true
+        coEvery { networkControlRepository.getNetworkState(any()) } returns true
 
         val result = getNetworkStateUseCase(1)
 
@@ -102,7 +102,7 @@ class NetworkUseCasesTest {
     @Test
     fun `GetNetworkStateUseCase handles failure`() = runTest {
         val exception = RuntimeException("Test Exception")
-        coEvery { networkControlRepository.getFivegEnabled(any()) } throws exception
+        coEvery { networkControlRepository.getNetworkState(any()) } throws exception
 
         val result = getNetworkStateUseCase(1)
 

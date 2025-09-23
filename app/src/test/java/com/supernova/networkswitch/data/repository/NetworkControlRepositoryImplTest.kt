@@ -72,49 +72,49 @@ class NetworkControlRepositoryImplTest {
     }
 
     @Test
-    fun `getFivegEnabled uses RootDataSource when method is ROOT`() = runTest {
+    fun `getNetworkState uses RootDataSource when method is ROOT`() = runTest {
         coEvery { preferencesRepository.getControlMethod() } returns ControlMethod.ROOT
         val subId = 1
 
-        repository.getFivegEnabled(subId)
+        repository.getNetworkState(subId)
 
-        coVerify { rootDataSource.getFivegEnabled(subId) }
-        coVerify(exactly = 0) { shizukuDataSource.getFivegEnabled(any()) }
+        coVerify { rootDataSource.getNetworkState(subId) }
+        coVerify(exactly = 0) { shizukuDataSource.getNetworkState(any()) }
     }
 
     @Test
-    fun `getFivegEnabled uses ShizukuDataSource when method is SHIZUKU`() = runTest {
+    fun `getNetworkState uses ShizukuDataSource when method is SHIZUKU`() = runTest {
         coEvery { preferencesRepository.getControlMethod() } returns ControlMethod.SHIZUKU
         val subId = 1
 
-        repository.getFivegEnabled(subId)
+        repository.getNetworkState(subId)
 
-        coVerify { shizukuDataSource.getFivegEnabled(subId) }
-        coVerify(exactly = 0) { rootDataSource.getFivegEnabled(any()) }
+        coVerify { shizukuDataSource.getNetworkState(subId) }
+        coVerify(exactly = 0) { rootDataSource.getNetworkState(any()) }
     }
 
     @Test
-    fun `setFivegEnabled uses RootDataSource when method is ROOT`() = runTest {
+    fun `setNetworkState uses RootDataSource when method is ROOT`() = runTest {
         coEvery { preferencesRepository.getControlMethod() } returns ControlMethod.ROOT
         val subId = 1
         val enabled = true
 
-        repository.setFivegEnabled(subId, enabled)
+        repository.setNetworkState(subId, enabled)
 
-        coVerify { rootDataSource.setFivegEnabled(subId, enabled) }
-        coVerify(exactly = 0) { shizukuDataSource.setFivegEnabled(any(), any()) }
+        coVerify { rootDataSource.setNetworkState(subId, enabled) }
+        coVerify(exactly = 0) { shizukuDataSource.setNetworkState(any(), any()) }
     }
 
     @Test
-    fun `setFivegEnabled uses ShizukuDataSource when method is SHIZUKU`() = runTest {
+    fun `setNetworkState uses ShizukuDataSource when method is SHIZUKU`() = runTest {
         coEvery { preferencesRepository.getControlMethod() } returns ControlMethod.SHIZUKU
         val subId = 1
         val enabled = true
 
-        repository.setFivegEnabled(subId, enabled)
+        repository.setNetworkState(subId, enabled)
 
-        coVerify { shizukuDataSource.setFivegEnabled(subId, enabled) }
-        coVerify(exactly = 0) { rootDataSource.setFivegEnabled(any(), any()) }
+        coVerify { shizukuDataSource.setNetworkState(subId, enabled) }
+        coVerify(exactly = 0) { rootDataSource.setNetworkState(any(), any()) }
     }
 
     @Test

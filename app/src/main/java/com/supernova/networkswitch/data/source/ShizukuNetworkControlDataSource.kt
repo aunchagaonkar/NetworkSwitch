@@ -53,10 +53,10 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
         }
     }
 
-    override suspend fun getFivegEnabled(subId: Int): Boolean {
+    override suspend fun getNetworkState(subId: Int): Boolean {
         return if (ensureServiceBinding()) {
             try {
-                userService?.getFivegEnabled(subId) ?: false
+                userService?.getNetworkState(subId) ?: false
             } catch (e: Exception) {
                 false
             }
@@ -65,10 +65,10 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
         }
     }
 
-    override suspend fun setFivegEnabled(subId: Int, enabled: Boolean) {
+    override suspend fun setNetworkState(subId: Int, enabled: Boolean) {
         if (ensureServiceBinding()) {
             try {
-                userService?.setFivegEnabled(subId, enabled)
+                userService?.setNetworkState(subId, enabled)
             } catch (e: Exception) {
                 throw e
             }

@@ -27,9 +27,9 @@ class ToggleNetworkModeUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(subId: Int): Result<Boolean> {
         return try {
-            val currentState = networkControlRepository.getFivegEnabled(subId)
+            val currentState = networkControlRepository.getNetworkState(subId)
             val newState = !currentState
-            networkControlRepository.setFivegEnabled(subId, newState)
+            networkControlRepository.setNetworkState(subId, newState)
                 .map { newState }
         } catch (e: Exception) {
             Result.failure(e)
@@ -45,7 +45,7 @@ class GetNetworkStateUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(subId: Int): Result<Boolean> {
         return try {
-            Result.success(networkControlRepository.getFivegEnabled(subId))
+            Result.success(networkControlRepository.getNetworkState(subId))
         } catch (e: Exception) {
             Result.failure(e)
         }

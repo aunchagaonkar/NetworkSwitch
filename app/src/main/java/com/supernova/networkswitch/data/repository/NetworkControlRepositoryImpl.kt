@@ -31,17 +31,17 @@ class NetworkControlRepositoryImpl @Inject constructor(
         return dataSource.checkCompatibility(subId)
     }
 
-    override suspend fun getFivegEnabled(subId: Int): Boolean {
+    override suspend fun getNetworkState(subId: Int): Boolean {
         val method = preferencesRepository.getControlMethod()
         val dataSource = getDataSource(method)
-        return dataSource.getFivegEnabled(subId)
+        return dataSource.getNetworkState(subId)
     }
 
-    override suspend fun setFivegEnabled(subId: Int, enabled: Boolean): Result<Unit> {
+    override suspend fun setNetworkState(subId: Int, enabled: Boolean): Result<Unit> {
         return try {
             val method = preferencesRepository.getControlMethod()
             val dataSource = getDataSource(method)
-            dataSource.setFivegEnabled(subId, enabled)
+            dataSource.setNetworkState(subId, enabled)
             _connectionState.value = dataSource.isConnected()
             Result.success(Unit)
         } catch (e: Exception) {

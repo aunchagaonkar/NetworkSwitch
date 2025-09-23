@@ -7,7 +7,7 @@ import com.supernova.networkswitch.domain.model.CompatibilityState
  */
 interface NetworkControlDataSource {
     suspend fun checkCompatibility(subId: Int): CompatibilityState
-    suspend fun getFivegEnabled(subId: Int): Boolean
-    suspend fun setFivegEnabled(subId: Int, enabled: Boolean)
+    suspend fun getNetworkState(subId: Int): Boolean
+    suspend fun setNetworkState(subId: Int, enabled: Boolean)
     fun isConnected(): Boolean
 }
