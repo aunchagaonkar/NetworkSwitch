@@ -1,13 +1,12 @@
 package com.supernova.networkswitch.data.source
 
 import com.supernova.networkswitch.domain.model.CompatibilityState
+import com.supernova.networkswitch.domain.model.NetworkMode
 
-/**
- * Interface for network control data sources
- */
 interface NetworkControlDataSource {
     suspend fun checkCompatibility(subId: Int): CompatibilityState
-    suspend fun getNetworkState(subId: Int): Boolean
-    suspend fun setNetworkState(subId: Int, enabled: Boolean)
+    suspend fun getCurrentNetworkMode(subId: Int): NetworkMode?
+    suspend fun setNetworkMode(subId: Int, mode: NetworkMode)
     fun isConnected(): Boolean
+    fun resetConnection()
 }

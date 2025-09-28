@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.IBinder
 import com.supernova.networkswitch.IShizukuController
 import com.supernova.networkswitch.domain.model.CompatibilityState
+import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.service.ShizukuControllerService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,9 +19,6 @@ import kotlin.coroutines.resume
 import com.supernova.networkswitch.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 
-/**
- * Shizuku-based network control data source
- */
 @Singleton
 class  ShizukuNetworkControlDataSource @Inject constructor(
     @ApplicationContext private val context: Context
@@ -53,22 +51,23 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
         }
     }
 
-    override suspend fun getNetworkState(subId: Int): Boolean {
+    override suspend fun getCurrentNetworkMode(subId: Int): NetworkMode? {
         return if (ensureServiceBinding()) {
             try {
-                userService?.getNetworkState(subId) ?: false
+                val modeValue = userService?.getCurrentNetworkMode(subId) ?: -1
+                if (modeValue == -1) null else NetworkMode.fromValue(modeValue)
             } catch (e: Exception) {
-                false
+                null
             }
         } else {
-            false
+            null
         }
     }
 
-    override suspend fun setNetworkState(subId: Int, enabled: Boolean) {
+    override suspend fun setNetworkMode(subId: Int, mode: NetworkMode) {
         if (ensureServiceBinding()) {
             try {
-                userService?.setNetworkState(subId, enabled)
+                userService?.setNetworkMode(subId, mode.value)
             } catch (e: Exception) {
                 throw e
             }
@@ -79,10 +78,7 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
 
     override fun isConnected(): Boolean = _isConnected.value
     
-    /**
-     * Reset connection state - useful when switching control methods
-     */
-    fun resetConnection() {
+    override fun resetConnection() {
         userService = null
         _isConnected.value = false
     }

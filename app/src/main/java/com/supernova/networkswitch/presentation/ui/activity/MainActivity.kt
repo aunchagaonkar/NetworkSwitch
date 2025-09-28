@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -38,6 +39,9 @@ class MainActivity : ComponentActivity() {
                     viewModel = viewModel,
                     onSettingsClick = {
                         startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                    },
+                    onNetworkModeConfigClick = {
+                        startActivity(Intent(this@MainActivity, NetworkModeConfigActivity::class.java))
                     }
                 )
             }
@@ -46,8 +50,6 @@ class MainActivity : ComponentActivity() {
     
     override fun onResume() {
         super.onResume()
-        // Refresh all data when app comes back from background
-        // This ensures UI reflects any changes made via Quick Settings tile or external changes
         viewModel.refreshAllData()
     }
 }
@@ -56,7 +58,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun MainScreen(
     viewModel: MainViewModel,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onNetworkModeConfigClick: () -> Unit
 ) {
     val compatibilityState = viewModel.compatibilityState
     
@@ -65,6 +68,12 @@ private fun MainScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(onClick = onNetworkModeConfigClick) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Network Mode Configuration"
+                        )
+                    }
                     IconButton(onClick = onSettingsClick) {
                         Icon(
                             imageVector = Icons.Default.Settings,
@@ -93,7 +102,8 @@ private fun MainScreen(
             // Network Toggle Card (show if compatible)
             if (compatibilityState is CompatibilityState.Compatible) {
                 NetworkToggleCard(
-                    networkState = viewModel.networkState,
+                    currentMode = viewModel.currentNetworkMode,
+                    toggleButtonText = viewModel.getToggleButtonText(),
                     isLoading = viewModel.isLoading,
                     onToggleClick = { viewModel.toggleNetworkMode() }
                 )

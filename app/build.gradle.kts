@@ -23,13 +23,7 @@ android {
             useSupportLibrary = true
         }
         
-        // Resource optimization
         resourceConfigurations += listOf("en", "xxhdpi")
-        
-        // Disable unnecessary features
-        vectorDrawables {
-            useSupportLibrary = true
-        }
     }
 
     buildTypes {
@@ -42,8 +36,6 @@ android {
             )
             signingConfig = signingConfigs.getByName("debug")
             isDebuggable = false
-            
-            // Additional optimizations
             isJniDebuggable = false
             isPseudoLocalesEnabled = false
         }
@@ -94,31 +86,12 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/*.kotlin_module"
-            excludes += "**/*.txt"
-            excludes += "**/*.properties"
-            excludes += "/META-INF/DEPENDENCIES"
-            excludes += "/META-INF/LICENSE"
-            excludes += "/META-INF/LICENSE.txt"
-            excludes += "/META-INF/license.txt"
-            excludes += "/META-INF/NOTICE"
-            excludes += "/META-INF/NOTICE.txt"
-            excludes += "/META-INF/notice.txt"
-            excludes += "/META-INF/ASL2.0"
             excludes += "/META-INF/maven/**"
-            excludes += "/META-INF/proguard/**"
-            excludes += "/META-INF/versions/**"
-            excludes += "**/*.kotlin_metadata"
-            excludes += "kotlin/**"
-            excludes += "META-INF/com.android.tools/**"
             excludes += "/androidsupportmultidexversion.txt"
         }
         
-        // JNI libraries optimization
         jniLibs {
             useLegacyPackaging = false
-            // Exclude native libraries from packaging
-            excludes += "**/libandroidx.graphics.path.so"
-            excludes += "**/libdatastore_shared_counter.so"
         }
     }
     
@@ -156,10 +129,8 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
-    debugImplementation(libs.androidx.ui.tooling.preview) // Move to debug only
     implementation(libs.androidx.material3)
-    implementation("androidx.compose.runtime:runtime")
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     
     // Dependency Injection

@@ -4,8 +4,11 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.telephony.SubscriptionManager
 import com.supernova.networkswitch.domain.model.ControlMethod
-import com.supernova.networkswitch.domain.usecase.GetNetworkStateUseCase
+import com.supernova.networkswitch.domain.model.NetworkMode
+import com.supernova.networkswitch.domain.model.ToggleModeConfig
+import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
+import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -15,28 +18,33 @@ import javax.inject.Inject
 class NetworkTileService : TileService() {
     
     @Inject
-    lateinit var getNetworkStateUseCase: GetNetworkStateUseCase
+    lateinit var getCurrentNetworkModeUseCase: GetCurrentNetworkModeUseCase
     
     @Inject
     lateinit var toggleNetworkModeUseCase: ToggleNetworkModeUseCase
+    
+    @Inject
+    lateinit var getToggleModeConfigUseCase: GetToggleModeConfigUseCase
     
     @Inject
     lateinit var preferencesRepository: PreferencesRepository
     
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
-    private var preferredMethod = ControlMethod.SHIZUKU
-    private var currentNetworkState = false
+    private var currentNetworkMode: NetworkMode? = null
+    private var toggleConfig: ToggleModeConfig? = null
 
     override fun onStartListening() {
         super.onStartListening()
-        // Load preferred method and initial state
         serviceScope.launch {
             try {
-                preferredMethod = preferencesRepository.getControlMethod()
-                refreshNetworkState()
-            } catch (e: Exception) {
-                // Silently handle errors during initialization
+                // Observe toggle configuration changes
+                preferencesRepository.observeToggleModeConfig().collect { newConfig ->
+                    toggleConfig = newConfig
+                    refreshNetworkState()
+                }
+            } catch (_: Exception) {
+                // Handle errors silently
             }
         }
     }
@@ -53,70 +61,65 @@ class NetworkTileService : TileService() {
         
         serviceScope.launch {
             try {
-                // Update preferred method from settings in case it changed
-                preferredMethod = preferencesRepository.getControlMethod()
-                
-                // Toggle network mode using use case
                 toggleNetworkModeUseCase(subId)
-                    .onSuccess {
-                        // Refresh state to show current status for user feedback
-                        refreshNetworkState()
+                    .onSuccess { newMode ->
+                        currentNetworkMode = newMode
+                        withContext(Dispatchers.Main) {
+                            updateTile()
+                        }
                     }
                     .onFailure {
-                        // On failure, still try to refresh state
                         refreshNetworkState()
                     }
-            } catch (e: Exception) {
-                // Silently handle any errors during toggle operation
-                try {
-                    refreshNetworkState()
-                } catch (refreshException: Exception) {
-                    // Silently handle refresh errors too
-                }
+            } catch (_: Exception) {
+                refreshNetworkState()
             }
         }
     }
 
-    private fun refreshNetworkState() {
+    private suspend fun refreshNetworkState() {
         val subId = SubscriptionManager.getDefaultDataSubscriptionId()
         
-        serviceScope.launch {
-            try {
-                getNetworkStateUseCase(subId)
-                    .onSuccess { networkState ->
-                        currentNetworkState = networkState
-                        withContext(Dispatchers.Main) {
-                            updateTile(currentNetworkState)
-                        }
+        try {
+            getCurrentNetworkModeUseCase(subId)
+                .onSuccess { networkMode ->
+                    currentNetworkMode = networkMode
+                    withContext(Dispatchers.Main) {
+                        updateTile()
                     }
-                    .onFailure {
-                        // Silently handle any errors during state refresh
-                    }
-            } catch (e: Exception) {
-                // Silently handle any errors during state refresh
-            }
+                }
+        } catch (_: Exception) {
+            // Handle errors silently
         }
     }
     
-    private fun updateTile(is5gEnabled: Boolean) {
+    private fun updateTile() {
         try {
             qsTile?.apply {
-                state = if (is5gEnabled) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-                label = if (is5gEnabled) "5G Mode" else "4G Mode"
-                subtitle = if (is5gEnabled) "NR Only" else "LTE Only"
+                val config = toggleConfig
+                
+                if (config != null) {
+                    state = Tile.STATE_ACTIVE
+                    
+                    // Show current and next modes
+                    val currentMode = config.getCurrentMode()
+                    val nextMode = config.getNextMode()
+                    label = currentMode.displayName
+                    subtitle = "${nextMode.displayName}"
+                } else {
+                    state = Tile.STATE_INACTIVE
+                    label = "Network Mode"
+                    subtitle = "Config not loaded"
+                }
                 updateTile()
             }
-        } catch (e: Exception) {
-            // Silently handle any tile update errors
+        } catch (_: Exception) {
+            // Handle tile update errors silently
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        try {
-            serviceScope.cancel()
-        } catch (e: Exception) {
-            // Silently handle any cleanup errors
-        }
+        serviceScope.cancel()
     }
 }

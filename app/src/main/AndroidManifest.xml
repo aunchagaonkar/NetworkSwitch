@@ -32,6 +32,13 @@
             android:parentActivityName=".presentation.ui.activity.MainActivity"
             android:theme="@style/Theme.NetworkSwitch" />
             
+        <activity
+            android:name=".presentation.ui.activity.NetworkModeConfigActivity"
+            android:exported="false"
+            android:label="@string/network_mode_config"
+            android:parentActivityName=".presentation.ui.activity.MainActivity"
+            android:theme="@style/Theme.NetworkSwitch" />
+            
         <service
             android:name=".service.NetworkTileService"
             android:exported="true"

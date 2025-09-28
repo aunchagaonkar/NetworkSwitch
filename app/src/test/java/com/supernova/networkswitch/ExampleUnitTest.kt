@@ -5,9 +5,6 @@ import org.junit.Assert.*
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
 
-/**
- * Unit tests for the Network Switch application domain models.
- */
 class NetworkSwitchUnitTest {
     
     @Test
@@ -19,22 +16,19 @@ class NetworkSwitchUnitTest {
     }
     
     @Test
-    fun networkMode_enum_values_are_correct() {
+    fun networkMode_enum_values_contain_expected_modes() {
         val modes = NetworkMode.values()
-        assertEquals(2, modes.size)
-        assertTrue(modes.contains(NetworkMode.FOUR_G_ONLY))
-        assertTrue(modes.contains(NetworkMode.FIVE_G_ONLY))
+        assertTrue(modes.size > 10)
+        assertTrue(modes.contains(NetworkMode.LTE_ONLY))
+        assertTrue(modes.contains(NetworkMode.NR_ONLY))
+        assertTrue(modes.contains(NetworkMode.GSM_ONLY))
+        assertTrue(modes.contains(NetworkMode.WCDMA_ONLY))
     }
     
     @Test
-    fun networkMode_toggle_logic_works() {
-        var currentMode = NetworkMode.FOUR_G_ONLY
-        currentMode = if (currentMode == NetworkMode.FOUR_G_ONLY) 
-            NetworkMode.FIVE_G_ONLY else NetworkMode.FOUR_G_ONLY
-        assertEquals(NetworkMode.FIVE_G_ONLY, currentMode)
-        
-        currentMode = if (currentMode == NetworkMode.FOUR_G_ONLY) 
-            NetworkMode.FIVE_G_ONLY else NetworkMode.FOUR_G_ONLY
-        assertEquals(NetworkMode.FOUR_G_ONLY, currentMode)
+    fun networkMode_fromValue_works_correctly() {
+        assertEquals(NetworkMode.LTE_ONLY, NetworkMode.fromValue(11))
+        assertEquals(NetworkMode.NR_ONLY, NetworkMode.fromValue(23))
+        assertNull(NetworkMode.fromValue(-1))
     }
 }

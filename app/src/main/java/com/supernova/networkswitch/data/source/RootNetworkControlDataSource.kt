@@ -8,6 +8,7 @@ import android.os.IBinder
 import com.supernova.networkswitch.IRootController
 import com.supernova.networkswitch.service.RootNetworkControllerService
 import com.supernova.networkswitch.domain.model.CompatibilityState
+import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.util.Utils
 import com.topjohnwu.superuser.ipc.RootService
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -17,9 +18,6 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import dagger.hilt.android.qualifiers.ApplicationContext
 
-/**
- * Root-based network control data source
- */
 @Singleton
 class RootNetworkControlDataSource @Inject constructor(
     @ApplicationContext private val context: Context
@@ -36,22 +34,24 @@ class RootNetworkControlDataSource @Inject constructor(
         }
     }
 
-    override suspend fun getNetworkState(subId: Int): Boolean {
-        val controller = getNetworkController()
-        return controller?.getNetworkState(subId) ?: false
+    override suspend fun getCurrentNetworkMode(subId: Int): NetworkMode? {
+        return try {
+            val controller = getNetworkController()
+            val modeValue = controller?.getCurrentNetworkMode(subId) ?: -1
+            if (modeValue == -1) null else NetworkMode.fromValue(modeValue)
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    override suspend fun setNetworkState(subId: Int, enabled: Boolean) {
+    override suspend fun setNetworkMode(subId: Int, mode: NetworkMode) {
         val controller = getNetworkController()
-        controller?.setNetworkState(subId, enabled)
+        controller?.setNetworkMode(subId, mode.value)
     }
 
     override fun isConnected(): Boolean = isServiceConnected
     
-    /**
-     * Reset connection state - useful when switching control methods
-     */
-    fun resetConnection() {
+    override fun resetConnection() {
         networkController = null
         isServiceConnected = false
     }

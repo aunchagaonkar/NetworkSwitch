@@ -14,8 +14,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
+import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.presentation.ui.components.CardSection
-import com.supernova.networkswitch.presentation.ui.components.NetworkModeToggleButton
+
+private fun ControlMethod.displayName() = if (this == ControlMethod.SHIZUKU) "Shizuku" else "Root"
 
 @Composable
 fun CompatibilityCard(
@@ -57,7 +59,7 @@ fun CompatibilityCard(
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = "Using ${if (currentControlMethod == ControlMethod.SHIZUKU) "Shizuku" else "Root"} method",
+                        text = "Using ${currentControlMethod.displayName()} method",
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.primary,
@@ -74,7 +76,7 @@ fun CompatibilityCard(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "${if (compatibilityState.method == ControlMethod.ROOT) "Root" else "Shizuku"} Access Denied",
+                        text = "${compatibilityState.method.displayName()} Access Denied",
                         style = MaterialTheme.typography.titleMedium,
                         textAlign = TextAlign.Center
                     )
@@ -120,7 +122,8 @@ fun CompatibilityCard(
 
 @Composable
 fun NetworkToggleCard(
-    networkState: Boolean,
+    currentMode: NetworkMode?,
+    toggleButtonText: String,
     isLoading: Boolean,
     onToggleClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -132,18 +135,18 @@ fun NetworkToggleCard(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = if (networkState) "5G Mode Active" else "4G Mode Active",
+            text = if (currentMode != null) "Current: ${currentMode.displayName}" else "Network mode unavailable",
             style = MaterialTheme.typography.titleMedium,
-            color = if (networkState) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+            color = if (currentMode != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )
         
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = if (networkState) {
-                "Switch to pure 4G mode (LTE only) for better battery life"
+            text = if (currentMode != null) {
+                "Tap to switch to the configured alternate network mode"
             } else {
-                "Switch to pure 5G mode (NR only) for maximum data speeds"
+                "Unable to detect current network mode"
             },
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
@@ -152,11 +155,20 @@ fun NetworkToggleCard(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        NetworkModeToggleButton(
-            networkState = networkState,
-            isLoading = isLoading,
-            onToggleClick = onToggleClick
-        )
+        Button(
+            onClick = onToggleClick,
+            enabled = !isLoading && currentMode != null,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(text = toggleButtonText)
+        }
     }
 }
 
@@ -182,7 +194,7 @@ fun QuickSettingsHintCard(modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "Add the \"4G/5G Toggle\" tile to your Quick Settings for instant network switching. Pull down your notification panel, tap the pencil icon, and add the tile.",
+                text = "Add the \"Network Switch Toggle\" tile to your Quick Settings for instant network switching. Pull down your notification panel, tap the pencil icon, and add the tile.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

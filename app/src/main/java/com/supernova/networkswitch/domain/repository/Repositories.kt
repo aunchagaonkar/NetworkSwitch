@@ -2,6 +2,8 @@ package com.supernova.networkswitch.domain.repository
 
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
+import com.supernova.networkswitch.domain.model.NetworkMode
+import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -14,19 +16,14 @@ interface NetworkControlRepository {
     suspend fun checkCompatibility(method: ControlMethod): CompatibilityState
     
     /**
-     * Get current 5G enabled state
+     * Get current network mode
      */
-    suspend fun getNetworkState(subId: Int): Boolean
+    suspend fun getCurrentNetworkMode(subId: Int): NetworkMode?
     
     /**
-     * Set 5G enabled state
+     * Set network mode
      */
-    suspend fun setNetworkState(subId: Int, enabled: Boolean): Result<Unit>
-    
-    /**
-     * Observe connection state changes
-     */
-    fun observeConnectionState(): Flow<Boolean>
+    suspend fun setNetworkMode(subId: Int, mode: NetworkMode): Result<Unit>
     
     /**
      * Reset connections - useful when switching control methods
@@ -52,4 +49,19 @@ interface PreferencesRepository {
      * Observe control method changes
      */
     fun observeControlMethod(): Flow<ControlMethod>
+    
+    /**
+     * Get toggle mode configuration
+     */
+    suspend fun getToggleModeConfig(): ToggleModeConfig
+    
+    /**
+     * Set toggle mode configuration
+     */
+    suspend fun setToggleModeConfig(config: ToggleModeConfig)
+    
+    /**
+     * Observe toggle mode configuration changes
+     */
+    fun observeToggleModeConfig(): Flow<ToggleModeConfig>
 }
