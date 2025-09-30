@@ -8,25 +8,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
+import com.supernova.networkswitch.domain.model.NetworkMode
+import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.usecase.CheckCompatibilityUseCase
-import com.supernova.networkswitch.domain.usecase.GetNetworkStateUseCase
+import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.UpdateControlMethodUseCase
+import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
 import dagger.hilt.android.lifecycle.HiltViewModel
 
-/**
- * MainViewModel with clean architecture using domain models and use cases
- */
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val checkCompatibilityUseCase: CheckCompatibilityUseCase,
-    private val getNetworkStateUseCase: GetNetworkStateUseCase,
+    private val getCurrentNetworkModeUseCase: GetCurrentNetworkModeUseCase,
     private val toggleNetworkModeUseCase: ToggleNetworkModeUseCase,
     private val updateControlMethodUseCase: UpdateControlMethodUseCase,
+    private val getToggleModeConfigUseCase: GetToggleModeConfigUseCase,
     private val preferencesRepository: PreferencesRepository
 ) : ViewModel() {
     
@@ -34,8 +35,12 @@ class MainViewModel @Inject constructor(
     var selectedMethod by mutableStateOf(ControlMethod.SHIZUKU)
         private set
     
-    // Network state - current 5G enabled status
-    var networkState by mutableStateOf(false)
+    // Current network mode
+    var currentNetworkMode by mutableStateOf<NetworkMode?>(null)
+        private set
+    
+    // Toggle mode configuration
+    var toggleModeConfig by mutableStateOf(ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY))
         private set
     
     var isLoading by mutableStateOf(false)
@@ -47,6 +52,7 @@ class MainViewModel @Inject constructor(
 
     init {
         observeControlMethodPreference()
+        loadToggleModeConfig()
         checkCompatibility()
         refreshNetworkState()
     }
@@ -60,8 +66,18 @@ class MainViewModel @Inject constructor(
                 if (selectedMethod != preferredMethod) {
                     selectedMethod = preferredMethod
                     checkCompatibility()
+                    loadToggleModeConfig()
                     refreshNetworkState()
                 }
+            }
+        }
+        
+        // Also observe toggle mode config changes
+        viewModelScope.launch {
+            preferencesRepository.observeToggleModeConfig().collectLatest { newConfig ->
+                toggleModeConfig = newConfig
+                // Force UI update when config changes
+                refreshNetworkState()
             }
         }
     }
@@ -101,7 +117,21 @@ class MainViewModel @Inject constructor(
     }
     
     /**
-     * Toggle network mode using domain use case
+     * Load toggle mode configuration
+     */
+    private fun loadToggleModeConfig() {
+        viewModelScope.launch {
+            try {
+                toggleModeConfig = getToggleModeConfigUseCase()
+            } catch (e: Exception) {
+                // Use default configuration if loading fails
+                toggleModeConfig = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY)
+            }
+        }
+    }
+    
+    /**
+     * Toggle network mode using configurable modes
      */
     fun toggleNetworkMode() {
         if (isLoading) return
@@ -111,8 +141,8 @@ class MainViewModel @Inject constructor(
             val subId = SubscriptionManager.getDefaultDataSubscriptionId()
             
             toggleNetworkModeUseCase(subId)
-                .onSuccess { newState ->
-                    networkState = newState
+                .onSuccess { newMode ->
+                    currentNetworkMode = newMode
                 }
                 .onFailure {
                     // On failure, refresh state to get current status
@@ -124,18 +154,26 @@ class MainViewModel @Inject constructor(
     }
     
     /**
+     * Get display text for current network mode and next toggle mode
+     */
+    fun getToggleButtonText(): String {
+        val nextMode = toggleModeConfig.getNextMode()
+        return "Switch to ${nextMode.displayName}"
+    }
+    
+    /**
      * Refresh current network state
      */
     private fun refreshNetworkState() {
         viewModelScope.launch {
             val subId = SubscriptionManager.getDefaultDataSubscriptionId()
             
-            getNetworkStateUseCase(subId)
-                .onSuccess { state ->
-                    networkState = state
+            getCurrentNetworkModeUseCase(subId)
+                .onSuccess { mode ->
+                    currentNetworkMode = mode
                 }
                 .onFailure {
-                    networkState = false
+                    currentNetworkMode = null
                 }
         }
     }

@@ -2,6 +2,6 @@ package com.supernova.networkswitch;
 
 interface IRootController {
     boolean compatibilityCheck(int subId);
-    boolean getNetworkState(int subId);
-    void setNetworkState(int subId, boolean enabled);
+    int getCurrentNetworkMode(int subId);
+    void setNetworkMode(int subId, int networkMode);
 }

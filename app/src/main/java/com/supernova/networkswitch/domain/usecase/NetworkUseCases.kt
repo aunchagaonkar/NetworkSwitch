@@ -2,13 +2,12 @@ package com.supernova.networkswitch.domain.usecase
 
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
+import com.supernova.networkswitch.domain.model.NetworkMode
+import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import javax.inject.Inject
 
-/**
- * Use case for checking network control compatibility
- */
 class CheckCompatibilityUseCase @Inject constructor(
     private val networkControlRepository: NetworkControlRepository,
     private val preferencesRepository: PreferencesRepository
@@ -19,18 +18,27 @@ class CheckCompatibilityUseCase @Inject constructor(
     }
 }
 
-/**
- * Use case for toggling network mode (4G/5G)
- */
 class ToggleNetworkModeUseCase @Inject constructor(
-    private val networkControlRepository: NetworkControlRepository
+    private val networkControlRepository: NetworkControlRepository,
+    private val preferencesRepository: PreferencesRepository
 ) {
-    suspend operator fun invoke(subId: Int): Result<Boolean> {
+    suspend operator fun invoke(subId: Int): Result<NetworkMode> {
         return try {
-            val currentState = networkControlRepository.getNetworkState(subId)
-            val newState = !currentState
-            networkControlRepository.setNetworkState(subId, newState)
-                .map { newState }
+            val toggleConfig = preferencesRepository.getToggleModeConfig()
+            
+            // Get the next mode to switch to (no current mode detection needed)
+            val targetMode = toggleConfig.getNextMode()
+            
+            // Set the network mode
+            val result = networkControlRepository.setNetworkMode(subId, targetMode)
+            
+            if (result.isSuccess) {
+                // Update the toggle state for next time
+                val newConfig = toggleConfig.toggle()
+                preferencesRepository.setToggleModeConfig(newConfig)
+            }
+            
+            result.map { targetMode }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -38,14 +46,14 @@ class ToggleNetworkModeUseCase @Inject constructor(
 }
 
 /**
- * Use case for getting current network state
+ * Use case for getting current network mode
  */
-class GetNetworkStateUseCase @Inject constructor(
+class GetCurrentNetworkModeUseCase @Inject constructor(
     private val networkControlRepository: NetworkControlRepository
 ) {
-    suspend operator fun invoke(subId: Int): Result<Boolean> {
+    suspend operator fun invoke(subId: Int): Result<NetworkMode?> {
         return try {
-            Result.success(networkControlRepository.getNetworkState(subId))
+            Result.success(networkControlRepository.getCurrentNetworkMode(subId))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -64,12 +72,23 @@ class UpdateControlMethodUseCase @Inject constructor(
 }
 
 /**
- * Use case for resetting network connections when switching methods
+ * Use case for getting toggle mode configuration
  */
-class ResetConnectionsUseCase @Inject constructor(
-    private val networkControlRepository: NetworkControlRepository
+class GetToggleModeConfigUseCase @Inject constructor(
+    private val preferencesRepository: PreferencesRepository
 ) {
-    suspend operator fun invoke() {
-        networkControlRepository.resetConnections()
+    suspend operator fun invoke(): ToggleModeConfig {
+        return preferencesRepository.getToggleModeConfig()
+    }
+}
+
+/**
+ * Use case for updating toggle mode configuration
+ */
+class UpdateToggleModeConfigUseCase @Inject constructor(
+    private val preferencesRepository: PreferencesRepository
+) {
+    suspend operator fun invoke(config: ToggleModeConfig) {
+        preferencesRepository.setToggleModeConfig(config)
     }
 }

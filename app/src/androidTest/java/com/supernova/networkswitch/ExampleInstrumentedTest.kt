@@ -9,9 +9,6 @@ import org.junit.runner.RunWith
 import org.junit.Assert.*
 import org.junit.Rule
 
-/**
- * Instrumented tests for the Network Switch application.
- */
 @RunWith(AndroidJUnit4::class)
 class NetworkSwitchInstrumentedTest {
 

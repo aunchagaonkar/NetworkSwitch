@@ -9,7 +9,7 @@ import com.android.internal.telephony.ITelephony
 import com.supernova.networkswitch.IShizukuController
 
 /**
- * Shizuku service for network control operations
+ * Simple Shizuku service for network control operations
  */
 class ShizukuControllerService() : IShizukuController.Stub() {
 
@@ -24,68 +24,230 @@ class ShizukuControllerService() : IShizukuController.Stub() {
                 .getInt(null)
         }
         
-        private val typeNr by lazy {
+        // Get network type bitmasks from Android TelephonyManager constants
+        private val NETWORK_TYPE_BITMASK_GSM by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_GSM")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_GPRS by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_GPRS")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_EDGE by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_EDGE")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_UMTS by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_UMTS")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_CDMA by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_CDMA")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_EVDO_0 by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_EVDO_0")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_EVDO_A by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_EVDO_A")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_1xRTT by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_1xRTT")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_HSDPA by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_HSDPA")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_HSUPA by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_HSUPA")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_HSPA by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_HSPA")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_EVDO_B by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_EVDO_B")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_LTE by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_LTE")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_EHRPD by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_EHRPD")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_HSPAP by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_HSPAP")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_TD_SCDMA by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_TD_SCDMA")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_LTE_CA by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_LTE_CA")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_IWLAN by lazy {
+            Class.forName("android.telephony.TelephonyManager")
+                .getDeclaredField("NETWORK_TYPE_BITMASK_IWLAN")
+                .getLong(null)
+        }
+        
+        private val NETWORK_TYPE_BITMASK_NR by lazy {
             Class.forName("android.telephony.TelephonyManager")
                 .getDeclaredField("NETWORK_TYPE_BITMASK_NR")
                 .getLong(null)
         }
-
-        @delegate:SuppressLint("PrivateApi", "BlockedPrivateApi")
-        private val modeLte by lazy {
-            Class.forName("com.android.internal.telephony.RILConstants")
-                .getDeclaredField("NETWORK_MODE_LTE_TDSCDMA_CDMA_EVDO_GSM_WCDMA")
-                .getInt(null)
-        }
-
-        @delegate:SuppressLint("PrivateApi", "BlockedPrivateApi")
-        private val modeNr by lazy {
-            Class.forName("com.android.internal.telephony.RILConstants")
-                .getDeclaredField("NETWORK_MODE_NR_LTE_TDSCDMA_CDMA_EVDO_GSM_WCDMA")
-                .getInt(null)
+        
+        // Combined bitmasks for common network classes
+        private fun get2GBitmask(): Long {
+            return try {
+                NETWORK_TYPE_BITMASK_GSM or NETWORK_TYPE_BITMASK_GPRS or 
+                NETWORK_TYPE_BITMASK_EDGE or NETWORK_TYPE_BITMASK_CDMA or NETWORK_TYPE_BITMASK_1xRTT
+            } catch (e: Exception) {
+                1L or 2L or 4L or 16L or 128L
+            }
         }
         
-        // Pure mode constants
-        @delegate:SuppressLint("PrivateApi", "BlockedPrivateApi")
-        private val typeLteOnly: Long by lazy {
-            try {
-                Class.forName("android.telephony.TelephonyManager")
-                    .getDeclaredField("NETWORK_TYPE_BITMASK_LTE")
-                    .getLong(null)
+        private fun get3GBitmask(): Long {
+            return try {
+                NETWORK_TYPE_BITMASK_EVDO_0 or NETWORK_TYPE_BITMASK_EVDO_A or 
+                NETWORK_TYPE_BITMASK_EVDO_B or NETWORK_TYPE_BITMASK_EHRPD or 
+                NETWORK_TYPE_BITMASK_HSUPA or NETWORK_TYPE_BITMASK_HSDPA or 
+                NETWORK_TYPE_BITMASK_HSPA or NETWORK_TYPE_BITMASK_HSPAP or 
+                NETWORK_TYPE_BITMASK_UMTS or NETWORK_TYPE_BITMASK_TD_SCDMA
             } catch (e: Exception) {
-                524288L // Fallback LTE bitmask
+                32L or 64L or 2048L or 8192L or 512L or 256L or 1024L or 16384L or 8L or 32768L
             }
         }
-
-        @delegate:SuppressLint("PrivateApi", "BlockedPrivateApi")
-        private val typeNrOnly: Long by lazy {
-            try {
-                Class.forName("android.telephony.TelephonyManager")
-                    .getDeclaredField("NETWORK_TYPE_BITMASK_NR")
-                    .getLong(null)
+        
+        private fun get4GBitmask(): Long {
+            return try {
+                NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_LTE_CA or NETWORK_TYPE_BITMASK_IWLAN
             } catch (e: Exception) {
-                2097152L // Fallback NR bitmask
+                4096L or 65536L or 131072L
             }
         }
-
-        @delegate:SuppressLint("PrivateApi", "BlockedPrivateApi")
-        private val modeLteOnly: Int by lazy {
-            try {
-                Class.forName("com.android.internal.telephony.RILConstants")
-                    .getDeclaredField("NETWORK_MODE_LTE_ONLY")
-                    .getInt(null)
+        
+        private fun get5GBitmask(): Long {
+            return try {
+                NETWORK_TYPE_BITMASK_NR
             } catch (e: Exception) {
-                11 // Fallback value
+                524288L
             }
         }
-
-        @delegate:SuppressLint("PrivateApi", "BlockedPrivateApi")
-        private val modeNrOnly: Int by lazy {
-            try {
-                Class.forName("com.android.internal.telephony.RILConstants")
-                    .getDeclaredField("NETWORK_MODE_NR_ONLY")
-                    .getInt(null)
-            } catch (e: Exception) {
-                23 // Fallback value
+        
+        /**
+         * Map RIL network mode constants to network type bitmasks for Android 12+
+         */
+        private fun mapNetworkModeToBitmask(networkMode: Int): Long {
+            return when (networkMode) {
+                0 -> get2GBitmask() or get3GBitmask() // WCDMA_PREF
+                1 -> NETWORK_TYPE_BITMASK_GSM // GSM_ONLY
+                2 -> NETWORK_TYPE_BITMASK_UMTS // WCDMA_ONLY
+                3 -> get2GBitmask() or get3GBitmask() // GSM_UMTS
+                4 -> NETWORK_TYPE_BITMASK_CDMA or NETWORK_TYPE_BITMASK_EVDO_0 or NETWORK_TYPE_BITMASK_EVDO_A or NETWORK_TYPE_BITMASK_EVDO_B // CDMA
+                5 -> NETWORK_TYPE_BITMASK_CDMA // CDMA_NO_EVDO
+                6 -> NETWORK_TYPE_BITMASK_EVDO_0 or NETWORK_TYPE_BITMASK_EVDO_A or NETWORK_TYPE_BITMASK_EVDO_B // EVDO_NO_CDMA
+                7 -> get2GBitmask() or get3GBitmask() or get4GBitmask() // GLOBAL
+                8 -> NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_CDMA or NETWORK_TYPE_BITMASK_EVDO_0 or NETWORK_TYPE_BITMASK_EVDO_A or NETWORK_TYPE_BITMASK_EVDO_B // LTE_CDMA_EVDO
+                9 -> NETWORK_TYPE_BITMASK_LTE or get2GBitmask() or get3GBitmask() // LTE_GSM_WCDMA
+                10 -> NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_CDMA or NETWORK_TYPE_BITMASK_EVDO_0 or NETWORK_TYPE_BITMASK_EVDO_A or NETWORK_TYPE_BITMASK_EVDO_B or get2GBitmask() or get3GBitmask() // LTE_CDMA_EVDO_GSM_WCDMA
+                11 -> NETWORK_TYPE_BITMASK_LTE // LTE_ONLY
+                12 -> NETWORK_TYPE_BITMASK_LTE or get3GBitmask() // LTE_WCDMA
+                13 -> NETWORK_TYPE_BITMASK_TD_SCDMA // TDSCDMA_ONLY
+                14 -> NETWORK_TYPE_BITMASK_TD_SCDMA or NETWORK_TYPE_BITMASK_UMTS // TDSCDMA_WCDMA
+                15 -> NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_TD_SCDMA // LTE_TDSCDMA
+                16 -> NETWORK_TYPE_BITMASK_TD_SCDMA or get2GBitmask() // TDSCDMA_GSM
+                17 -> NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_TD_SCDMA or get2GBitmask() // LTE_TDSCDMA_GSM
+                18 -> NETWORK_TYPE_BITMASK_TD_SCDMA or get2GBitmask() or get3GBitmask() // TDSCDMA_GSM_WCDMA
+                19 -> NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_TD_SCDMA or get3GBitmask() // LTE_TDSCDMA_WCDMA
+                20 -> NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_TD_SCDMA or get2GBitmask() or get3GBitmask() // LTE_TDSCDMA_GSM_WCDMA
+                21 -> NETWORK_TYPE_BITMASK_TD_SCDMA or NETWORK_TYPE_BITMASK_CDMA or NETWORK_TYPE_BITMASK_EVDO_0 or NETWORK_TYPE_BITMASK_EVDO_A or NETWORK_TYPE_BITMASK_EVDO_B or get2GBitmask() or get3GBitmask() // TDSCDMA_CDMA_EVDO_GSM_WCDMA
+                22 -> NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_TD_SCDMA or NETWORK_TYPE_BITMASK_CDMA or NETWORK_TYPE_BITMASK_EVDO_0 or NETWORK_TYPE_BITMASK_EVDO_A or NETWORK_TYPE_BITMASK_EVDO_B or get2GBitmask() or get3GBitmask() // LTE_TDSCDMA_CDMA_EVDO_GSM_WCDMA
+                23 -> NETWORK_TYPE_BITMASK_NR // NR_ONLY
+                24 -> NETWORK_TYPE_BITMASK_NR or NETWORK_TYPE_BITMASK_LTE // NR_LTE
+                25 -> NETWORK_TYPE_BITMASK_NR or NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_CDMA or NETWORK_TYPE_BITMASK_EVDO_0 or NETWORK_TYPE_BITMASK_EVDO_A or NETWORK_TYPE_BITMASK_EVDO_B // NR_LTE_CDMA_EVDO
+                26 -> NETWORK_TYPE_BITMASK_NR or NETWORK_TYPE_BITMASK_LTE or get2GBitmask() or get3GBitmask() // NR_LTE_GSM_WCDMA
+                27 -> NETWORK_TYPE_BITMASK_NR or NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_CDMA or NETWORK_TYPE_BITMASK_EVDO_0 or NETWORK_TYPE_BITMASK_EVDO_A or NETWORK_TYPE_BITMASK_EVDO_B or get2GBitmask() or get3GBitmask() // NR_LTE_CDMA_EVDO_GSM_WCDMA
+                28 -> NETWORK_TYPE_BITMASK_NR or NETWORK_TYPE_BITMASK_LTE or get3GBitmask() // NR_LTE_WCDMA
+                29 -> NETWORK_TYPE_BITMASK_NR or NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_TD_SCDMA // NR_LTE_TDSCDMA
+                30 -> NETWORK_TYPE_BITMASK_NR or NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_TD_SCDMA or get2GBitmask() // NR_LTE_TDSCDMA_GSM
+                31 -> NETWORK_TYPE_BITMASK_NR or NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_TD_SCDMA or get3GBitmask() // NR_LTE_TDSCDMA_WCDMA
+                32 -> NETWORK_TYPE_BITMASK_NR or NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_TD_SCDMA or get2GBitmask() or get3GBitmask() // NR_LTE_TDSCDMA_GSM_WCDMA
+                33 -> NETWORK_TYPE_BITMASK_NR or NETWORK_TYPE_BITMASK_LTE or NETWORK_TYPE_BITMASK_TD_SCDMA or NETWORK_TYPE_BITMASK_CDMA or NETWORK_TYPE_BITMASK_EVDO_0 or NETWORK_TYPE_BITMASK_EVDO_A or NETWORK_TYPE_BITMASK_EVDO_B or get2GBitmask() or get3GBitmask() // NR_LTE_TDSCDMA_CDMA_EVDO_GSM_WCDMA
+                else -> get2GBitmask() or get3GBitmask() or get4GBitmask() // Default fallback
+            }
+        }
+        
+        /**
+         * Map bitmask back to RIL network mode for getCurrentNetworkMode
+         */
+        private fun mapBitmaskToNetworkMode(bitmask: Long): Int {
+            // Try exact matches for all modes by comparing with their expected bitmasks
+            for (mode in 0..33) {
+                try {
+                    if (bitmask == mapNetworkModeToBitmask(mode)) {
+                        return mode
+                    }
+                } catch (_: Exception) {
+                    // Skip invalid modes
+                }
+            }
+            
+            // If no exact match found, use simple fallback logic
+            return when {
+                bitmask == NETWORK_TYPE_BITMASK_NR -> 23 // NR_ONLY
+                bitmask == NETWORK_TYPE_BITMASK_LTE -> 11 // LTE_ONLY
+                bitmask == NETWORK_TYPE_BITMASK_GSM -> 1 // GSM_ONLY
+                bitmask == NETWORK_TYPE_BITMASK_UMTS -> 2 // WCDMA_ONLY
+                bitmask == NETWORK_TYPE_BITMASK_TD_SCDMA -> 13 // TDSCDMA_ONLY
+                bitmask == (NETWORK_TYPE_BITMASK_NR or NETWORK_TYPE_BITMASK_LTE) -> 24 // NR_LTE
+                (bitmask and NETWORK_TYPE_BITMASK_NR) != 0L -> 23 // Has 5G, default to NR_ONLY
+                (bitmask and NETWORK_TYPE_BITMASK_LTE) != 0L -> 11 // Has LTE, default to LTE_ONLY
+                (bitmask and get3GBitmask()) != 0L -> 2 // Has 3G, default to WCDMA_ONLY
+                (bitmask and get2GBitmask()) != 0L -> 1 // Has 2G, default to GSM_ONLY
+                else -> 0 // WCDMA_PREF as ultimate fallback
             }
         }
     }
@@ -96,71 +258,44 @@ class ShizukuControllerService() : IShizukuController.Stub() {
     override fun compatibilityCheck(subId: Int): Boolean {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                // Test pure modes on Android 12+
-                val originalTypes = iTelephony.getAllowedNetworkTypesForReason(subId, reasonUser)
-                
-                // Test LTE-only
-                iTelephony.setAllowedNetworkTypesForReason(subId, reasonUser, typeLteOnly)
-                val lteTest = iTelephony.getAllowedNetworkTypesForReason(subId, reasonUser)
-                
-                // Test NR-only
-                iTelephony.setAllowedNetworkTypesForReason(subId, reasonUser, typeNrOnly)
-                val nrTest = iTelephony.getAllowedNetworkTypesForReason(subId, reasonUser)
-                
-                // Restore original
-                iTelephony.setAllowedNetworkTypesForReason(subId, reasonUser, originalTypes)
-                
-                (lteTest == typeLteOnly) && (nrTest == typeNrOnly)
+                reasonUser
+                iTelephony.setAllowedNetworkTypesForReason(
+                    subId,
+                    reasonUser,
+                    iTelephony.getAllowedNetworkTypesForReason(subId, reasonUser)
+                )
             } else {
-                // Test preferred network modes for older Android
-                val original = iTelephony.getPreferredNetworkType(subId)
-                
-                iTelephony.setPreferredNetworkType(subId, modeLteOnly)
-                val lteTest = iTelephony.getPreferredNetworkType(subId) == modeLteOnly
-                
-                iTelephony.setPreferredNetworkType(subId, modeNrOnly)
-                val nrTest = iTelephony.getPreferredNetworkType(subId) == modeNrOnly
-                
-                // Restore
-                iTelephony.setPreferredNetworkType(subId, original)
-                
-                lteTest && nrTest
+                iTelephony.setPreferredNetworkType(
+                    subId,
+                    iTelephony.getPreferredNetworkType(subId)
+                )
             }
+            true
         } catch (_: Exception) {
             false
         }
     }
 
-    override fun getNetworkState(subId: Int): Boolean {
+    override fun getCurrentNetworkMode(subId: Int): Int {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                iTelephony.getAllowedNetworkTypesForReason(subId, reasonUser) and typeNr != 0L
+                val currentBitmask = iTelephony.getAllowedNetworkTypesForReason(subId, reasonUser)
+                mapBitmaskToNetworkMode(currentBitmask)
             } else {
-                val currentMode = iTelephony.getPreferredNetworkType(subId)
-                currentMode == modeNrOnly || currentMode >= 23 // 5G modes
+                iTelephony.getPreferredNetworkType(subId)
             }
         } catch (_: Exception) {
-            false
+            -1
         }
     }
 
-    override fun setNetworkState(subId: Int, enabled: Boolean) {
+    override fun setNetworkMode(subId: Int, networkMode: Int) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (enabled) {
-                    // Use pure 5G mode (NR only)
-                    iTelephony.setAllowedNetworkTypesForReason(subId, reasonUser, typeNrOnly)
-                } else {
-                    // Use pure 4G mode (LTE only)
-                    iTelephony.setAllowedNetworkTypesForReason(subId, reasonUser, typeLteOnly)
-                }
+                val networkTypeBitmask = mapNetworkModeToBitmask(networkMode)
+                iTelephony.setAllowedNetworkTypesForReason(subId, reasonUser, networkTypeBitmask)
             } else {
-                // For older Android versions
-                if (enabled) {
-                    iTelephony.setPreferredNetworkType(subId, modeNrOnly)
-                } else {
-                    iTelephony.setPreferredNetworkType(subId, modeLteOnly)
-                }
+                iTelephony.setPreferredNetworkType(subId, networkMode)
             }
         } catch (_: Exception) {
             // Silently fail

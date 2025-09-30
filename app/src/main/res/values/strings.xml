@@ -1,32 +1,12 @@
 <resources>
     <string name="app_name">Network Switch</string>
-    <string name="hint">Hint</string>
-    <string name="hint_good">Now you can add the tile to the quick settings and toggle between pure 4G and pure 5G modes. The app uses only LTE and NR modes without fallbacks for maximum performance.</string>
-    <string name="hint_no_shizuku">Shizuku permission is needed for this app to work properly. Please install Shizuku and grant permission.</string>
-    <string name="compatibility_pending">Checking…</string>
-    <string name="compatibility_root_not_granted">Root not granted</string>
-    <string name="compatibility_shizuku_not_granted">Shizuku permission not granted</string>
-    <string name="compatibility_not_compatible">Not compatible</string>
-    <string name="compatibility_good">Compatible</string>
-    <string name="about">About</string>
-    <string name="source_code">Source Code</string>
-    <string name="open_source_licenses">Open Source Licenses</string>
-    <string name="network_switch">4G/5G Toggle</string>
-    <string name="hint_no_root">Root permission is needed for this app to work properly :(</string>
-    <string name="hint_not_compatible">Sorry but this app is not compatible with your system. Consider to open an issue in the Github repository with enough information :)</string>
+    <string name="network_switch">Network Switch</string>
     
-    <!-- New strings for UI -->
-    <string name="checking_compatibility">Checking compatibility…</string>
-    <string name="device_compatible">Device Compatible</string>
-    <string name="device_compatibility_desc">Your device supports network switching</string>
-    <string name="device_not_compatible">Device Not Compatible</string>
-    <string name="network_mode">Network Mode</string>
-    <string name="quick_settings_hint">Add the \"4G/5G Toggle\" tile to your Quick Settings for instant network switching. Pull down your notification panel, tap the pencil icon, and add the tile.</string>
-    <string name="settings">Settings</string>
-    <string name="control_method">Control Method</string>
-    <string name="control_method_desc">Choose how the app should control network settings. Root method requires a rooted device, while Shizuku method works with non-rooted devices that have Shizuku installed.</string>
-    <string name="root_method">Root Method</string>
-    <string name="root_method_desc">Requires rooted device with root access granted</string>
-    <string name="shizuku_method">Shizuku Method</string>
-    <string name="shizuku_method_desc">Works with non-rooted devices using Shizuku service</string>
+    <!-- Configuration -->
+    <string name="network_mode_config">Network Mode Configuration</string>
+    <string name="network_mode_config_desc">Choose which two network modes to toggle between</string>
+    <string name="mode_a_label">Mode A</string>
+    <string name="mode_b_label">Mode B</string>
+    <string name="save_configuration">Save Configuration</string>
+    <string name="configuration_saved">Configuration saved successfully</string>
 </resources>
