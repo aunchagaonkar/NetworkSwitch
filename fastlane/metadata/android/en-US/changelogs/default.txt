@@ -1,0 +1,6 @@
+• Network mode control supporting 34 different configurations
+• Configurable toggle between any two network modes
+• Support for 2G/3G/4G/5G and regional network combinations
+• Smart Quick Settings tile showing current and next modes
+• Network mode configuration screen with preview
+• Root and Shizuku dual control methods for maximum compatibility
