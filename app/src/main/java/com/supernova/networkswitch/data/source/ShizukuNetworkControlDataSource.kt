@@ -157,4 +157,44 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
             false
         }
     }
+
+    override suspend fun requestPermission(): Boolean {
+        return try {
+            if (!Shizuku.pingBinder()) {
+                return false
+            }
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                return true
+            }
+            suspendCancellableCoroutine { continuation ->
+                val permissionListener = object : Shizuku.OnRequestPermissionResultListener {
+                    override fun onRequestPermissionResult(requestCode: Int, grantResult: Int) {
+                        if (requestCode == SHIZUKU_PERMISSION_REQUEST_ID) {
+                            Shizuku.removeRequestPermissionResultListener(this)
+                            val granted = grantResult == PackageManager.PERMISSION_GRANTED
+                            if (continuation.isActive) {
+                                continuation.resume(granted)
+                            }
+                        }
+                    }
+                }
+
+                continuation.invokeOnCancellation {
+                    Shizuku.removeRequestPermissionResultListener(permissionListener)
+                }
+
+                try {
+                    Shizuku.addRequestPermissionResultListener(permissionListener)
+                    Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_ID)
+                } catch (e: Exception) {
+                    Shizuku.removeRequestPermissionResultListener(permissionListener)
+                    if (continuation.isActive) {
+                        continuation.resume(false)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
 }

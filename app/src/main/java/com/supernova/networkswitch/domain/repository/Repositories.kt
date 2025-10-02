@@ -29,6 +29,11 @@ interface NetworkControlRepository {
      * Reset connections - useful when switching control methods
      */
     suspend fun resetConnections()
+
+    /**
+     * Request permission for the specified control method
+     */
+    suspend fun requestPermission(method: ControlMethod): Boolean
 }
 
 /**

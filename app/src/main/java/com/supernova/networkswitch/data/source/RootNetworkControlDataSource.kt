@@ -10,6 +10,7 @@ import com.supernova.networkswitch.service.RootNetworkControllerService
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.util.Utils
+import com.topjohnwu.superuser.Shell
 import com.topjohnwu.superuser.ipc.RootService
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
@@ -31,6 +32,17 @@ class RootNetworkControlDataSource @Inject constructor(
             CompatibilityState.PermissionDenied(com.supernova.networkswitch.domain.model.ControlMethod.ROOT)
         } else {
             CompatibilityState.Compatible
+        }
+    }
+
+    override suspend fun requestPermission(): Boolean {
+        return try {
+            // Request root access by attempting to get a shell
+            // This will trigger the root permission dialog if not already granted
+            val shell = Shell.getShell()
+            Shell.isAppGrantedRoot() == true
+        } catch (e: Exception) {
+            false
         }
     }
 
