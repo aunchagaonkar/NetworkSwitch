@@ -19,6 +19,7 @@ import com.supernova.networkswitch.presentation.ui.components.CardSection
 
 private fun ControlMethod.displayName() = if (this == ControlMethod.SHIZUKU) "Shizuku" else "Root"
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CompatibilityCard(
     compatibilityState: CompatibilityState,
@@ -43,7 +44,7 @@ fun CompatibilityCard(
                         textAlign = TextAlign.Center
                     )
                 }
-                
+
                 is CompatibilityState.Compatible -> {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
@@ -66,7 +67,7 @@ fun CompatibilityCard(
                         fontWeight = FontWeight.Medium
                     )
                 }
-                
+
                 is CompatibilityState.PermissionDenied -> {
                     Icon(
                         imageVector = Icons.Default.Warning,
@@ -81,9 +82,9 @@ fun CompatibilityCard(
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = if (compatibilityState.method == ControlMethod.ROOT) 
-                            "Please grant root access to use this app" 
-                        else 
+                        text = if (compatibilityState.method == ControlMethod.ROOT)
+                            "Please grant root access to use this app"
+                        else
                             "Please grant Shizuku permission or install Shizuku",
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
@@ -92,7 +93,7 @@ fun CompatibilityCard(
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = onRetryClick) { Text("Retry") }
                 }
-                
+
                 is CompatibilityState.Incompatible -> {
                     Icon(
                         imageVector = Icons.Default.Error,
@@ -113,7 +114,8 @@ fun CompatibilityCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = onRetryClick) { Text("Retry") }
+                    Button(onClick = onRetryClick, shapes = ButtonDefaults.shapes()) { Text("Retry") }
+
                 }
             }
         }
@@ -133,15 +135,15 @@ fun NetworkToggleCard(
         modifier = modifier
     ) {
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = if (currentMode != null) "Current: ${currentMode.displayName}" else "Network mode unavailable",
             style = MaterialTheme.typography.titleMedium,
             color = if (currentMode != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
             text = if (currentMode != null) {
                 "Tap to switch to the configured alternate network mode"
@@ -152,9 +154,9 @@ fun NetworkToggleCard(
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Button(
             onClick = onToggleClick,
             enabled = !isLoading && currentMode != null,
@@ -190,9 +192,9 @@ fun QuickSettingsHintCard(modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Text(
                 text = "Add the \"Network Switch Toggle\" tile to your Quick Settings for instant network switching. Pull down your notification panel, tap the pencil icon, and add the tile.",
                 style = MaterialTheme.typography.bodyMedium,

@@ -48,7 +48,7 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsScreen(
     viewModel: SettingsViewModel,

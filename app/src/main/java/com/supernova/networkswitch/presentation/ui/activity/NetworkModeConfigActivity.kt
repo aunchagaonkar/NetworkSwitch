@@ -44,7 +44,7 @@ class NetworkModeConfigActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun NetworkModeConfigScreen(
     viewModel: NetworkModeConfigViewModel,
