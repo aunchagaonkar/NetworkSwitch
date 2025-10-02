@@ -171,7 +171,7 @@ cd NetworkSwitch
 ## TODO
 - [x] Add unit tests for all core components
 - [x] Add customizable network mode support (34 modes)
-- [ ] Implement adaptive app icon, with icon-pack launcher compatibility
+- [x] Implement adaptive app icon, with icon-pack launcher compatibility
 - [ ] Implement scheduled/automatic network switching
 - [ ] Add network speed monitoring and performance metrics
 - [ ] Add multi-language support
