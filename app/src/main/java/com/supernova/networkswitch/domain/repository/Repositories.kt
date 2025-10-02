@@ -14,21 +14,26 @@ interface NetworkControlRepository {
      * Check if network control is compatible with current device/method
      */
     suspend fun checkCompatibility(method: ControlMethod): CompatibilityState
-    
+
     /**
      * Get current network mode
      */
     suspend fun getCurrentNetworkMode(subId: Int): NetworkMode?
-    
+
     /**
      * Set network mode
      */
     suspend fun setNetworkMode(subId: Int, mode: NetworkMode): Result<Unit>
-    
+
     /**
      * Reset connections - useful when switching control methods
      */
     suspend fun resetConnections()
+
+    /**
+     * Request permission for the specified control method
+     */
+    suspend fun requestPermission(method: ControlMethod): Boolean
 }
 
 /**
@@ -39,29 +44,39 @@ interface PreferencesRepository {
      * Get preferred control method
      */
     suspend fun getControlMethod(): ControlMethod
-    
+
     /**
      * Set preferred control method
      */
     suspend fun setControlMethod(method: ControlMethod)
-    
+
     /**
      * Observe control method changes
      */
     fun observeControlMethod(): Flow<ControlMethod>
-    
+
     /**
      * Get toggle mode configuration
      */
     suspend fun getToggleModeConfig(): ToggleModeConfig
-    
+
     /**
      * Set toggle mode configuration
      */
     suspend fun setToggleModeConfig(config: ToggleModeConfig)
-    
+
     /**
      * Observe toggle mode configuration changes
      */
     fun observeToggleModeConfig(): Flow<ToggleModeConfig>
+
+    /**
+     * Observe hide launcher icon changes
+     */
+    fun observeHideLauncherIcon(): Flow<Boolean>
+
+    /**
+     * Set hide launcher icon
+     */
+    suspend fun setHideLauncherIcon(hide: Boolean)
 }

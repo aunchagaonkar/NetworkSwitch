@@ -15,6 +15,7 @@ import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.UpdateControlMethodUseCase
 import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
+import com.supernova.networkswitch.domain.usecase.RequestPermissionUseCase
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
@@ -28,6 +29,7 @@ class MainViewModel @Inject constructor(
     private val toggleNetworkModeUseCase: ToggleNetworkModeUseCase,
     private val updateControlMethodUseCase: UpdateControlMethodUseCase,
     private val getToggleModeConfigUseCase: GetToggleModeConfigUseCase,
+    private val requestPermissionUseCase: RequestPermissionUseCase,
     private val preferencesRepository: PreferencesRepository
 ) : ViewModel() {
     
@@ -102,12 +104,26 @@ class MainViewModel @Inject constructor(
     }
     
     /**
-     * Retry compatibility check
+     * Retry compatibility check with request permissions if denied
      */
     fun retryCompatibilityCheck() {
-        checkCompatibility()
+        viewModelScope.launch {
+            val currentState = compatibilityState
+            if (currentState is CompatibilityState.PermissionDenied) {
+                compatibilityState = CompatibilityState.Pending
+                val permissionGranted = requestPermissionUseCase(currentState.method)
+                compatibilityState = if (permissionGranted) {
+                    checkCompatibilityUseCase()
+                } else {
+                    // denied :(
+                    currentState
+                }
+            } else {
+                checkCompatibility()
+            }
+        }
     }
-    
+
     /**
      * Refresh all data when app resumes
      */

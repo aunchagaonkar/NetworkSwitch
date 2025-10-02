@@ -9,4 +9,5 @@ interface NetworkControlDataSource {
     suspend fun setNetworkMode(subId: Int, mode: NetworkMode)
     fun isConnected(): Boolean
     fun resetConnection()
+    suspend fun requestPermission(): Boolean
 }
