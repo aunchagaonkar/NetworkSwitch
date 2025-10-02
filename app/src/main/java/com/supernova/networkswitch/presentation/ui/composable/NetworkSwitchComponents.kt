@@ -91,7 +91,7 @@ fun CompatibilityCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = onRetryClick) { Text("Retry") }
+                    Button(onClick = onRetryClick,shapes = ButtonDefaults.shapes()) { Text("Retry") }
                 }
 
                 is CompatibilityState.Incompatible -> {
@@ -122,6 +122,7 @@ fun CompatibilityCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun NetworkToggleCard(
     currentMode: NetworkMode?,
@@ -160,7 +161,8 @@ fun NetworkToggleCard(
         Button(
             onClick = onToggleClick,
             enabled = !isLoading && currentMode != null,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shapes = ButtonDefaults.shapes()
         ) {
             if (isLoading) {
                 CircularProgressIndicator(

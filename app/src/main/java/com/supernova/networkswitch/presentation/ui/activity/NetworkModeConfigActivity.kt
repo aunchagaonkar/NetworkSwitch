@@ -175,7 +175,8 @@ private fun NetworkModeConfigScreen(
             Button(
                 onClick = { viewModel.saveConfiguration() },
                 enabled = !isLoading && currentConfig.modeA != currentConfig.modeB,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shapes = ButtonDefaults.shapes()
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
