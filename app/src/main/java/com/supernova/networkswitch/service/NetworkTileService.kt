@@ -3,7 +3,6 @@ package com.supernova.networkswitch.service
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.telephony.SubscriptionManager
-import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
@@ -12,6 +11,9 @@ import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -34,8 +36,14 @@ class NetworkTileService : TileService() {
     private var currentNetworkMode: NetworkMode? = null
     private var toggleConfig: ToggleModeConfig? = null
 
+    companion object {
+        private val _isTileAdded = MutableStateFlow(false)
+        val isTileAdded: StateFlow<Boolean> = _isTileAdded.asStateFlow()
+    }
+
     override fun onStartListening() {
         super.onStartListening()
+        _isTileAdded.value = true
         serviceScope.launch {
             try {
                 // Observe toggle configuration changes
@@ -51,6 +59,7 @@ class NetworkTileService : TileService() {
 
     override fun onStopListening() {
         super.onStopListening()
+        _isTileAdded.value = false
         // Clean up any ongoing operations when tile becomes inactive
     }
 
@@ -105,7 +114,7 @@ class NetworkTileService : TileService() {
                     val currentMode = config.getCurrentMode()
                     val nextMode = config.getNextMode()
                     label = currentMode.displayName
-                    subtitle = "${nextMode.displayName}"
+                    subtitle = nextMode.displayName
                 } else {
                     state = Tile.STATE_INACTIVE
                     label = "Network Mode"
@@ -120,6 +129,7 @@ class NetworkTileService : TileService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        _isTileAdded.value = false
         serviceScope.cancel()
     }
 }

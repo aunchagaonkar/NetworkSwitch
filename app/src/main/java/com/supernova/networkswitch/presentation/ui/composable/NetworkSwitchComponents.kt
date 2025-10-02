@@ -1,14 +1,22 @@
 package com.supernova.networkswitch.presentation.ui.composable
 
+import android.app.StatusBarManager
+import android.content.ComponentName
+import android.content.Context
+import android.graphics.drawable.Icon
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -16,6 +24,7 @@ import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.presentation.ui.components.CardSection
+import com.supernova.networkswitch.service.NetworkTileService
 
 private fun ControlMethod.displayName() = if (this == ControlMethod.SHIZUKU) "Shizuku" else "Root"
 
@@ -176,32 +185,118 @@ fun NetworkToggleCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun QuickSettingsHintCard(modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "💡 Pro Tip",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+fun QuickSettingsHintCard(
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val isTileAdded by NetworkTileService.isTileAdded.collectAsState()
+    var hasTriedAutoAdd by remember { mutableStateOf(false) }
+    var showAddButton by remember { mutableStateOf(false) }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Add the \"Network Switch Toggle\" tile to your Quick Settings for instant network switching. Pull down your notification panel, tap the pencil icon, and add the tile.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+    // Auto-add tile on first composition
+    LaunchedEffect(Unit) {
+        if (!hasTriedAutoAdd && !isTileAdded) {
+            hasTriedAutoAdd = true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val success = requestAddTileToQuickSettings(context)
+                showAddButton = !success
+            } else {
+                showAddButton = true
+            }
         }
+    }
+
+    // Update showAddButton when tile status changes
+    LaunchedEffect(isTileAdded) {
+        if (isTileAdded) {
+            showAddButton = false
+        }
+    }
+
+    if (isTileAdded || showAddButton) {
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = if (isTileAdded) "✅ Quick Settings" else "💡 Quick Settings",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = if (isTileAdded) {
+                        "Great! You can now switch network modes directly from your Quick Settings panel. Just pull down your notification panel and tap the \"Network Switch\" tile."
+                    } else {
+                        "Add the \"Network Switch\" tile to your Quick Settings for instant network switching from anywhere on your device."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                if (!isTileAdded && showAddButton) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Button(
+                            onClick = {
+                                val success = requestAddTileToQuickSettings(context)
+                                if (success) showAddButton = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Add to Quick Settings")
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Pull down your notification panel → Tap the pencil/edit icon → Find \"Network Switch\" → Drag it to your Quick Settings",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+private fun requestAddTileToQuickSettings(context: Context): Boolean {
+    return try {
+        val statusBarManager = context.getSystemService(StatusBarManager::class.java)
+        val componentName = ComponentName(context, NetworkTileService::class.java)
+
+        statusBarManager?.requestAddTileService(
+            componentName,
+            "Network Switch",
+            Icon.createWithResource(context, com.supernova.networkswitch.R.drawable.ic_5g_big),
+            { runnable -> runnable.run() },
+            { result ->
+              // ->  STATUS_BAR_MANAGER_TILE_ADDED or STATUS_BAR_MANAGER_TILE_NOT_ADDED
+            }
+        )
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
     }
 }
