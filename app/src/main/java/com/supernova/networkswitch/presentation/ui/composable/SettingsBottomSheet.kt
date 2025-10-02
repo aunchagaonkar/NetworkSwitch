@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,7 +56,11 @@ fun SettingsBottomSheet(
     // Network Mode Config properties
     currentConfig: ToggleModeConfig,
     onModeASelected: (NetworkMode) -> Unit,
-    onModeBSelected: (NetworkMode) -> Unit
+    onModeBSelected: (NetworkMode) -> Unit,
+
+    // App settings
+    hideLauncherIcon: Boolean,
+    onHideLauncherIconChanged: (Boolean) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -77,7 +82,55 @@ fun SettingsBottomSheet(
             onModeASelected = onModeASelected,
             onModeBSelected = onModeBSelected
         )
+
+        AppSettingsCard(
+            hideLauncherIcon = hideLauncherIcon,
+            onHideLauncherIconChanged = onHideLauncherIconChanged
+        )
         Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun AppSettingsCard(
+    hideLauncherIcon: Boolean,
+    onHideLauncherIconChanged: (Boolean) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "App Settings",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 16.dp)
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Hide launcher icon",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Relaunch the app for changes to take effect",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = hideLauncherIcon,
+                    onCheckedChange = onHideLauncherIconChanged
+                )
+            }
+        }
     }
 }
 

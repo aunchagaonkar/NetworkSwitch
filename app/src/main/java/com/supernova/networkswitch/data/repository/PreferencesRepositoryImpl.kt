@@ -15,28 +15,36 @@ import javax.inject.Singleton
 class PreferencesRepositoryImpl @Inject constructor(
     private val preferencesDataSource: PreferencesDataSource
 ) : PreferencesRepository {
-    
+
     override suspend fun getControlMethod(): ControlMethod {
         return preferencesDataSource.getControlMethod()
     }
-    
+
     override suspend fun setControlMethod(method: ControlMethod) {
         preferencesDataSource.setControlMethod(method)
     }
-    
+
     override fun observeControlMethod(): Flow<ControlMethod> {
         return preferencesDataSource.observeControlMethod()
     }
-    
+
     override suspend fun getToggleModeConfig(): ToggleModeConfig {
         return preferencesDataSource.getToggleModeConfig()
     }
-    
+
     override suspend fun setToggleModeConfig(config: ToggleModeConfig) {
         preferencesDataSource.setToggleModeConfig(config)
     }
-    
+
     override fun observeToggleModeConfig(): Flow<ToggleModeConfig> {
         return preferencesDataSource.observeToggleModeConfig()
+    }
+
+    override fun observeHideLauncherIcon(): Flow<Boolean> {
+        return preferencesDataSource.observeHideLauncherIcon()
+    }
+
+    override suspend fun setHideLauncherIcon(hide: Boolean) {
+        preferencesDataSource.setHideLauncherIcon(hide)
     }
 }

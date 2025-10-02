@@ -33,7 +33,7 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    
+
     private val viewModel: MainViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
     private val networkModeConfigViewModel: NetworkModeConfigViewModel by viewModels()
@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    
+
     override fun onResume() {
         super.onResume()
         viewModel.refreshAllData()
@@ -73,6 +73,7 @@ private fun MainScreen(
 
     // Settings state
     val controlMethod by settingsViewModel.controlMethod.collectAsState()
+    val hideLauncherIcon by settingsViewModel.hideLauncherIcon.collectAsState()
     val currentConfig by networkModeConfigViewModel.currentConfig.collectAsState()
 
     if (showAboutBottomSheet) {
@@ -97,14 +98,16 @@ private fun MainScreen(
                 shizukuCompatibility = settingsViewModel.shizukuCompatibility,
                 onRetryCompatibilityClick = { settingsViewModel.retryCompatibilityCheck() },
                 currentConfig = currentConfig,
-                onModeASelected = { mode ->
-                    networkModeConfigViewModel.updateModeA(mode)
+                onModeASelected = {
+                    networkModeConfigViewModel.updateModeA(it)
                     networkModeConfigViewModel.saveConfiguration()
                 },
-                onModeBSelected = { mode ->
-                    networkModeConfigViewModel.updateModeB(mode)
+                onModeBSelected = {
+                    networkModeConfigViewModel.updateModeB(it)
                     networkModeConfigViewModel.saveConfiguration()
-                }
+                },
+                hideLauncherIcon = hideLauncherIcon,
+                onHideLauncherIconChanged = { settingsViewModel.updateHideLauncherIcon(it) }
             )
         }
     }
@@ -156,7 +159,7 @@ private fun MainScreen(
                 currentControlMethod = viewModel.selectedMethod,
                 onRetryClick = { viewModel.retryCompatibilityCheck() }
             )
-            
+
             // Network Toggle Card (show if compatible)
             if (compatibilityState is CompatibilityState.Compatible) {
                 NetworkToggleCard(
@@ -166,7 +169,7 @@ private fun MainScreen(
                     onToggleClick = { viewModel.toggleNetworkMode() }
                 )
             }
-            
+
             // Quick Settings Tip Card
             QuickSettingsHintCard()
         }
