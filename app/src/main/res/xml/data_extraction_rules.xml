@@ -1,19 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
+   Data extraction rules for Network Switch app (Android 12+)
    See https://developer.android.com/about/versions/12/backup-restore#xml-changes
    for details.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <!-- Include user preferences for cloud backup -->
+        <include domain="file" path="datastore/" />
+        
+        <!-- Exclude any sensitive or device-specific data -->
+        <exclude domain="file" path="datastore/device_specific.preferences_pb" />
     </cloud-backup>
-    <!--
+    
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <!-- Allow user settings to be transferred to new device -->
+        <include domain="file" path="datastore/" />
+        
+        <!-- Exclude device-specific data from transfer -->
+        <exclude domain="file" path="datastore/device_specific.preferences_pb" />
     </device-transfer>
-    -->
 </data-extraction-rules>

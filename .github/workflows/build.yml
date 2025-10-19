@@ -3,9 +3,13 @@ name: Build APK
 on:
   push:
     branches: [ main, dev ]
+    paths-ignore:
+      - 'README.md'
   pull_request:
     branches: [ main, dev, feature/* ]
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - 'README.md'
 
 jobs:
   build:
