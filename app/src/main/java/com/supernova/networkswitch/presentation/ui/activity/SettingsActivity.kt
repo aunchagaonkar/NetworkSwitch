@@ -1,10 +1,15 @@
 package com.supernova.networkswitch.presentation.ui.activity
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.presentation.theme.NetworkSwitchTheme
@@ -60,6 +66,34 @@ private fun SettingsScreen(
     val selectedSubscriptionId by viewModel.selectedSubscriptionId.collectAsState()
     val isLoadingSims by viewModel.isLoadingSims.collectAsState()
     
+    val context = LocalContext.current
+    var hasPhoneStatePermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_PHONE_STATE
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasPhoneStatePermission = isGranted
+        if (isGranted) {
+            // Refresh SIM list after permission is granted
+            viewModel.refreshAvailableSims()
+        }
+    }
+    
+    // Request permission on first composition if not granted
+    LaunchedEffect(Unit) {
+        if (!hasPhoneStatePermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            permissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+        }
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -92,7 +126,8 @@ private fun SettingsScreen(
                 onRetryClick = { viewModel.retryCompatibilityCheck() }
             )
             
-            // SIM Card Selection (only show if multiple SIMs detected)
+            // SIM Card Selection
+            // Show if multiple SIMs detected OR if permission not granted (to show info card)
             if (availableSims.size > 1) {
                 SimSelectionCard(
                     availableSims = availableSims,
@@ -100,6 +135,13 @@ private fun SettingsScreen(
                     isLoading = isLoadingSims,
                     onSimSelected = { viewModel.selectSim(it) },
                     onRefresh = { viewModel.refreshAvailableSims() }
+                )
+            } else if (!hasPhoneStatePermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                // Show permission info card
+                PermissionInfoCard(
+                    onRequestPermission = {
+                        permissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+                    }
                 )
             }
             
@@ -447,6 +489,60 @@ private fun getSelectedSimDisplayName(
     }
     return availableSims.find { it.subscriptionId == selectedSubscriptionId }?.displayName
         ?: "Unknown SIM"
+}
+
+@Composable
+private fun PermissionInfoCard(
+    onRequestPermission: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Error,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Multi-SIM Support",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Text(
+                text = "To detect and manage multiple SIM cards, this app needs permission to read your phone state. This permission is only used to identify available SIM cards.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Button(
+                onClick = onRequestPermission,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Grant Permission")
+            }
+        }
+    }
 }
 
 @Composable

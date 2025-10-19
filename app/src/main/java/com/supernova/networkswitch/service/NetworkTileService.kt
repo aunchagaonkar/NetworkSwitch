@@ -2,11 +2,11 @@ package com.supernova.networkswitch.service
 
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import android.telephony.SubscriptionManager
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
+import com.supernova.networkswitch.domain.usecase.GetEffectiveSubscriptionIdUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
@@ -19,6 +19,9 @@ class NetworkTileService : TileService() {
     
     @Inject
     lateinit var getCurrentNetworkModeUseCase: GetCurrentNetworkModeUseCase
+    
+    @Inject
+    lateinit var getEffectiveSubscriptionIdUseCase: GetEffectiveSubscriptionIdUseCase
     
     @Inject
     lateinit var toggleNetworkModeUseCase: ToggleNetworkModeUseCase
@@ -57,10 +60,11 @@ class NetworkTileService : TileService() {
     override fun onClick() {
         super.onClick()
         
-        val subId = SubscriptionManager.getDefaultDataSubscriptionId()
-        
         serviceScope.launch {
             try {
+                // Use the user's selected subscription ID (or default if "Auto" selected)
+                val subId = getEffectiveSubscriptionIdUseCase()
+                
                 toggleNetworkModeUseCase(subId)
                     .onSuccess { newMode ->
                         currentNetworkMode = newMode
@@ -78,9 +82,10 @@ class NetworkTileService : TileService() {
     }
 
     private suspend fun refreshNetworkState() {
-        val subId = SubscriptionManager.getDefaultDataSubscriptionId()
-        
         try {
+            // Use the user's selected subscription ID (or default if "Auto" selected)
+            val subId = getEffectiveSubscriptionIdUseCase()
+            
             getCurrentNetworkModeUseCase(subId)
                 .onSuccess { networkMode ->
                     currentNetworkMode = networkMode

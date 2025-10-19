@@ -1,5 +1,6 @@
 package com.supernova.networkswitch.domain.usecase
 
+import android.telephony.SubscriptionManager
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
@@ -130,5 +131,24 @@ class SetSelectedSubscriptionIdUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(subscriptionId: Int) {
         preferencesRepository.setSelectedSubscriptionId(subscriptionId)
+    }
+}
+
+/**
+ * Use case for getting the effective subscription ID to use for network operations
+ * Returns the user's selected subscription ID, or the default if "Auto" is selected
+ */
+class GetEffectiveSubscriptionIdUseCase @Inject constructor(
+    private val preferencesRepository: PreferencesRepository
+) {
+    suspend operator fun invoke(): Int {
+        val selectedSubId = preferencesRepository.getSelectedSubscriptionId()
+        return if (selectedSubId == -1) {
+            // User selected "Auto" - use system default
+            SubscriptionManager.getDefaultDataSubscriptionId()
+        } else {
+            // User selected a specific SIM
+            selectedSubId
+        }
     }
 }
