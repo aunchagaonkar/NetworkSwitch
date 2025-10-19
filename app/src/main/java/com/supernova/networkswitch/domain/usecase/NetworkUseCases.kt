@@ -137,18 +137,42 @@ class SetSelectedSubscriptionIdUseCase @Inject constructor(
 /**
  * Use case for getting the effective subscription ID to use for network operations
  * Returns the user's selected subscription ID, or the default if "Auto" is selected
+ * Includes validation to handle edge cases like removed SIM cards
  */
 class GetEffectiveSubscriptionIdUseCase @Inject constructor(
-    private val preferencesRepository: PreferencesRepository
+    private val preferencesRepository: PreferencesRepository,
+    private val simRepository: SimRepository
 ) {
     suspend operator fun invoke(): Int {
         val selectedSubId = preferencesRepository.getSelectedSubscriptionId()
-        return if (selectedSubId == -1) {
-            // User selected "Auto" - use system default
-            SubscriptionManager.getDefaultDataSubscriptionId()
-        } else {
-            // User selected a specific SIM
+        
+        // If Auto mode (-1), use system default
+        if (selectedSubId == -1) {
+            return SubscriptionManager.getDefaultDataSubscriptionId()
+        }
+        
+        // Validate that the selected SIM still exists
+        val availableSims = try {
+            simRepository.getAvailableSimCards()
+        } catch (e: Exception) {
+            // If we can't check, use the selected ID anyway
+            return selectedSubId
+        }
+        
+        // Check if the selected SIM is still available
+        val isSimAvailable = availableSims.any { it.subscriptionId == selectedSubId }
+        
+        return if (isSimAvailable) {
+            // Selected SIM still exists, use it
             selectedSubId
+        } else {
+            // Selected SIM was removed, fall back to default and reset preference
+            try {
+                preferencesRepository.setSelectedSubscriptionId(-1)
+            } catch (e: Exception) {
+                // Silent catch 
+            }
+            SubscriptionManager.getDefaultDataSubscriptionId()
         }
     }
 }

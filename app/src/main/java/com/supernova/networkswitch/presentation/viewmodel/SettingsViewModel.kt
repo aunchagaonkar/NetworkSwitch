@@ -17,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
@@ -64,9 +65,14 @@ class SettingsViewModel @Inject constructor(
     private val _isLoadingSims = MutableStateFlow(false)
     val isLoadingSims: StateFlow<Boolean> = _isLoadingSims.asStateFlow()
     
+    // Error state for SIM operations
+    private val _simError = MutableStateFlow<String?>(null)
+    val simError: StateFlow<String?> = _simError.asStateFlow()
+    
     init {
         checkAllCompatibility()
         loadAvailableSims()
+        observeSelectedSimValidity()
     }
     
     fun updateControlMethod(method: ControlMethod) {
@@ -99,17 +105,72 @@ class SettingsViewModel @Inject constructor(
     private fun loadAvailableSims() {
         viewModelScope.launch {
             _isLoadingSims.value = true
+            _simError.value = null
             try {
                 val result = getAvailableSimsUseCase()
                 if (result.isSuccess) {
-                    _availableSims.value = result.getOrNull() ?: emptyList()
+                    val sims = result.getOrNull() ?: emptyList()
+                    _availableSims.value = sims
+                    
+                    // Check if previously selected SIM is still available
+                    validateSelectedSim(sims)
                 } else {
                     _availableSims.value = emptyList()
+                    _simError.value = "Failed to detect SIM cards"
                 }
             } catch (e: Exception) {
                 _availableSims.value = emptyList()
+                _simError.value = "Error: ${e.message}"
             } finally {
                 _isLoadingSims.value = false
+            }
+        }
+    }
+    
+    /**
+     * Validate that the currently selected SIM is still available
+     * Reset to Auto if the selected SIM was removed
+     */
+    private suspend fun validateSelectedSim(availableSims: List<SimInfo>) {
+        val currentSelection = selectedSubscriptionId.value
+        
+        // Skip validation if Auto mode (-1) or if no selection
+        if (currentSelection == -1) return
+        
+        // Check if the selected SIM is still in the available list
+        val isStillAvailable = availableSims.any { it.subscriptionId == currentSelection }
+        
+        if (!isStillAvailable) {
+            // Selected SIM was removed, reset to Auto mode
+            try {
+                setSelectedSubscriptionIdUseCase(-1)
+                _simError.value = "Previously selected SIM was removed. Switched to Auto mode."
+            } catch (e: Exception) {
+                _simError.value = "Failed to update SIM selection"
+            }
+        }
+    }
+    
+    /**
+     * Observe selected SIM validity and auto-correct if removed
+     */
+    // Mutex to prevent redundant validation calls in a thread-safe way
+    private val simValidationMutex = kotlinx.coroutines.sync.Mutex()
+
+    private fun observeSelectedSimValidity() {
+        viewModelScope.launch {
+            selectedSubscriptionId.collectLatest { subId ->
+                if (subId != -1 && _availableSims.value.isNotEmpty()) {
+                    val isValid = _availableSims.value.any { it.subscriptionId == subId }
+                    if (!isValid) {
+                        simValidationMutex.lock()
+                        try {
+                            validateSelectedSim(_availableSims.value)
+                        } finally {
+                            simValidationMutex.unlock()
+                        }
+                    }
+                }
             }
         }
     }
@@ -129,11 +190,28 @@ class SettingsViewModel @Inject constructor(
     fun selectSim(subscriptionId: Int) {
         viewModelScope.launch {
             try {
+                // Validate the selection before saving
+                if (subscriptionId != -1) {
+                    val isValid = _availableSims.value.any { it.subscriptionId == subscriptionId }
+                    if (!isValid) {
+                        _simError.value = "Selected SIM is not available"
+                        return@launch
+                    }
+                }
+                
                 setSelectedSubscriptionIdUseCase(subscriptionId)
+                _simError.value = null // Clear any previous errors
             } catch (e: Exception) {
-                // Handle error if needed (could show toast or snackbar)
+                _simError.value = "Failed to save SIM selection: ${e.message}"
             }
         }
+    }
+    
+    /**
+     * Clear any SIM-related error messages
+     */
+    fun clearSimError() {
+        _simError.value = null
     }
     
     /**

@@ -23,6 +23,8 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,8 +67,24 @@ private fun SettingsScreen(
     val availableSims by viewModel.availableSims.collectAsState()
     val selectedSubscriptionId by viewModel.selectedSubscriptionId.collectAsState()
     val isLoadingSims by viewModel.isLoadingSims.collectAsState()
+    val simError by viewModel.simError.collectAsState()
     
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Show error message in snackbar when error occurs
+    LaunchedEffect(simError) {
+        simError?.let { error ->
+            val result = snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Long
+            )
+            // Clear the error only after the snackbar is dismissed
+            if (result == SnackbarResult.Dismissed || result == SnackbarResult.ActionPerformed) {
+                viewModel.clearSimError()
+            }
+        }
+    }
     var hasPhoneStatePermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -107,7 +125,8 @@ private fun SettingsScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
