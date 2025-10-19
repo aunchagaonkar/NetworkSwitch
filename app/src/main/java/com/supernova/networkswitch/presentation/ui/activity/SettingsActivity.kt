@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +56,9 @@ private fun SettingsScreen(
     onBackClick: () -> Unit
 ) {
     val controlMethod by viewModel.controlMethod.collectAsState()
+    val availableSims by viewModel.availableSims.collectAsState()
+    val selectedSubscriptionId by viewModel.selectedSubscriptionId.collectAsState()
+    val isLoadingSims by viewModel.isLoadingSims.collectAsState()
     
     Scaffold(
         topBar = {
@@ -87,6 +91,17 @@ private fun SettingsScreen(
                 shizukuCompatibility = viewModel.shizukuCompatibility,
                 onRetryClick = { viewModel.retryCompatibilityCheck() }
             )
+            
+            // SIM Card Selection (only show if multiple SIMs detected)
+            if (availableSims.size > 1) {
+                SimSelectionCard(
+                    availableSims = availableSims,
+                    selectedSubscriptionId = selectedSubscriptionId,
+                    isLoading = isLoadingSims,
+                    onSimSelected = { viewModel.selectSim(it) },
+                    onRefresh = { viewModel.refreshAvailableSims() }
+                )
+            }
             
             // About Section
             AboutCard()
@@ -268,6 +283,170 @@ private fun ControlMethodCard(
             }
         }
     }
+}
+
+@Composable
+private fun SimSelectionCard(
+    availableSims: List<com.supernova.networkswitch.domain.model.SimInfo>,
+    selectedSubscriptionId: Int,
+    isLoading: Boolean,
+    onSimSelected: (Int) -> Unit,
+    onRefresh: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "SIM Card Selection",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                if (!isLoading) {
+                    IconButton(onClick = onRefresh) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh SIM list"
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Choose which SIM card to use for network switching. The app will only change network settings for the selected SIM.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                // Dropdown Menu
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = getSelectedSimDisplayName(availableSims, selectedSubscriptionId),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Selected SIM") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    )
+                    
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        // Option for "Auto/Default"
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(
+                                        text = "Auto (System Default)",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        text = "Let the system choose",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            onClick = {
+                                onSimSelected(-1)
+                                expanded = false
+                            },
+                            leadingIcon = {
+                                if (selectedSubscriptionId == -1) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Selected",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        )
+                        
+                        // Individual SIM options
+                        availableSims.forEach { sim ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(
+                                            text = sim.displayName,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        Text(
+                                            text = "Subscription ID: ${sim.subscriptionId}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    onSimSelected(sim.subscriptionId)
+                                    expanded = false
+                                },
+                                leadingIcon = {
+                                    if (sim.subscriptionId == selectedSubscriptionId) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = "Selected",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Helper function to get the display name for the selected SIM
+ */
+private fun getSelectedSimDisplayName(
+    availableSims: List<com.supernova.networkswitch.domain.model.SimInfo>,
+    selectedSubscriptionId: Int
+): String {
+    if (selectedSubscriptionId == -1) {
+        return "Auto (System Default)"
+    }
+    return availableSims.find { it.subscriptionId == selectedSubscriptionId }?.displayName
+        ?: "Unknown SIM"
 }
 
 @Composable

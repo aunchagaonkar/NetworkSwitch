@@ -3,9 +3,11 @@ package com.supernova.networkswitch.domain.usecase
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
+import com.supernova.networkswitch.domain.model.SimInfo
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
+import com.supernova.networkswitch.domain.repository.SimRepository
 import javax.inject.Inject
 
 class CheckCompatibilityUseCase @Inject constructor(
@@ -90,5 +92,43 @@ class UpdateToggleModeConfigUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(config: ToggleModeConfig) {
         preferencesRepository.setToggleModeConfig(config)
+    }
+}
+
+/**
+ * Use case for getting available SIM cards in the device
+ */
+class GetAvailableSimsUseCase @Inject constructor(
+    private val simRepository: SimRepository
+) {
+    suspend operator fun invoke(): Result<List<SimInfo>> {
+        return try {
+            val sims = simRepository.getAvailableSimCards()
+            Result.success(sims)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+
+/**
+ * Use case for getting the selected subscription ID
+ */
+class GetSelectedSubscriptionIdUseCase @Inject constructor(
+    private val preferencesRepository: PreferencesRepository
+) {
+    suspend operator fun invoke(): Int {
+        return preferencesRepository.getSelectedSubscriptionId()
+    }
+}
+
+/**
+ * Use case for setting the selected subscription ID
+ */
+class SetSelectedSubscriptionIdUseCase @Inject constructor(
+    private val preferencesRepository: PreferencesRepository
+) {
+    suspend operator fun invoke(subscriptionId: Int) {
+        preferencesRepository.setSelectedSubscriptionId(subscriptionId)
     }
 }
