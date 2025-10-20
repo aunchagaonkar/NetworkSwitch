@@ -18,6 +18,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
@@ -37,6 +38,7 @@ import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.presentation.theme.NetworkSwitchTheme
 import com.supernova.networkswitch.presentation.viewmodel.SettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import com.supernova.networkswitch.presentation.ui.activity.AboutActivity
 
 @AndroidEntryPoint
 class SettingsActivity : ComponentActivity() {
@@ -94,6 +96,8 @@ private fun SettingsScreen(
         )
     }
     
+    var showPermissionRationaleDialog by remember { mutableStateOf(false) }
+
     // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -104,12 +108,28 @@ private fun SettingsScreen(
             viewModel.refreshAvailableSims()
         }
     }
-    
-    // Request permission on first composition if not granted
-    LaunchedEffect(Unit) {
+
+    // Extracted permission request logic
+    fun requestPhoneStatePermission() {
         if (!hasPhoneStatePermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            permissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+            showPermissionRationaleDialog = true
         }
+    }
+
+    // Show permission rationale dialog on first composition if permission not granted
+    LaunchedEffect(Unit) {
+        requestPhoneStatePermission()
+    }
+
+    // Permission Rationale Dialog
+    if (showPermissionRationaleDialog) {
+        PermissionRationaleDialog(
+            onDismiss = { showPermissionRationaleDialog = false },
+            onConfirm = {
+                showPermissionRationaleDialog = false
+                permissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+            }
+        )
     }
     
     Scaffold(
@@ -159,13 +179,195 @@ private fun SettingsScreen(
                 // Show permission info card
                 PermissionInfoCard(
                     onRequestPermission = {
-                        permissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+                        requestPhoneStatePermission()
                     }
                 )
             }
             
-            // About Section
-            AboutCard()
+            // Permissions Card
+            PermissionsCard(
+                hasPhoneStatePermission = hasPhoneStatePermission,
+                onRequestPermission = {
+                    requestPhoneStatePermission()
+                }
+            )
+            
+            // About Section - Button to navigate to About Activity
+            AboutNavigationCard(
+                onNavigateToAbout = {
+                    context.startActivity(Intent(context, AboutActivity::class.java))
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun PermissionRationaleDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        title = {
+            Text(
+                text = "Multi-SIM Support Permission",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "NetworkSwitch needs access to read your phone state to detect and manage multiple SIM cards on your device.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "This permission allows the app to:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "• Identify available SIM cards",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "• Display SIM card names and operators",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "• Allow you to choose which SIM to control",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Your privacy is important. This permission is only used to identify SIM cards and is never used to access your calls, messages, or contacts.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Grant Permission")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Not Now")
+            }
+        }
+    )
+}
+
+@Composable
+private fun PermissionsCard(
+    hasPhoneStatePermission: Boolean,
+    onRequestPermission: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Permissions",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Manage app permissions to enable all features",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Phone State Permission Item
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !hasPhoneStatePermission) {
+                        onRequestPermission()
+                    }
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (hasPhoneStatePermission) Icons.Default.CheckCircle else Icons.Default.Error,
+                    contentDescription = null,
+                    tint = if (hasPhoneStatePermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(24.dp)
+                )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Phone State",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = if (hasPhoneStatePermission) "Granted - Multi-SIM support enabled" else "Not granted - Tap to request",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AboutNavigationCard(
+    onNavigateToAbout: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onNavigateToAbout)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "About",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "App information, licenses, and more",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = "Navigate to About",
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
@@ -561,103 +763,5 @@ private fun PermissionInfoCard(
                 Text("Grant Permission")
             }
         }
-    }
-}
-
-@Composable
-private fun AboutCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "About",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Source Code",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            LinkItem(
-                title = "NetworkSwitch",
-                subtitle = "https://github.com/aunchagaonkar/NetworkSwitch",
-                link = "https://github.com/aunchagaonkar/NetworkSwitch"
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Text(
-                text = "Open Source Licenses",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            LinkItem(
-                title = "Shizuku",
-                subtitle = "Apache License 2.0\nhttps://github.com/RikkaApps/Shizuku",
-                link = "https://github.com/RikkaApps/Shizuku"
-            )
-            
-            LinkItem(
-                title = "libsu",
-                subtitle = "Apache License 2.0\nhttps://github.com/topjohnwu/libsu",
-                link = "https://github.com/topjohnwu/libsu"
-            )
-            
-            LinkItem(
-                title = "Android Jetpack",
-                subtitle = "Apache License 2.0\nhttps://android.googlesource.com/platform/frameworks/support",
-                link = "https://android.googlesource.com/platform/frameworks/support"
-            )
-            
-            LinkItem(
-                title = "Kotlin",
-                subtitle = "Apache License 2.0\nhttps://github.com/JetBrains/kotlin",
-                link = "https://github.com/JetBrains/kotlin"
-            )
-        }
-    }
-}
-
-@Composable
-private fun LinkItem(
-    title: String,
-    subtitle: String,
-    link: String
-) {
-    val context = LocalContext.current
-    
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
-            }
-            .padding(vertical = 8.dp)
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }

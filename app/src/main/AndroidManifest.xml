@@ -36,6 +36,13 @@
             android:theme="@style/Theme.NetworkSwitch" />
             
         <activity
+            android:name=".presentation.ui.activity.AboutActivity"
+            android:exported="false"
+            android:label="About"
+            android:parentActivityName=".presentation.ui.activity.SettingsActivity"
+            android:theme="@style/Theme.NetworkSwitch" />
+            
+        <activity
             android:name=".presentation.ui.activity.NetworkModeConfigActivity"
             android:exported="false"
             android:label="@string/network_mode_config"
