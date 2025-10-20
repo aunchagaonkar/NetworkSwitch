@@ -56,6 +56,11 @@ class NetworkControlRepositoryImpl @Inject constructor(
         shizukuDataSource.resetConnection()
     }
 
+    override suspend fun requestPermission(method: ControlMethod): Boolean {
+        val dataSource = getDataSource(method)
+        return dataSource.requestPermission()
+    }
+
     private fun getDataSource(method: ControlMethod): NetworkControlDataSource {
         return when (method) {
             ControlMethod.ROOT -> rootDataSource

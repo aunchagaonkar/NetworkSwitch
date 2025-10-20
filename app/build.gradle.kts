@@ -18,11 +18,11 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
         vectorDrawables {
             useSupportLibrary = true
         }
-        
+
         resourceConfigurations += listOf("en", "xxhdpi")
     }
 
@@ -39,7 +39,7 @@ android {
             isJniDebuggable = false
             isPseudoLocalesEnabled = false
         }
-        
+
         debug {
             isMinifyEnabled = false
             isDebuggable = true
@@ -47,12 +47,12 @@ android {
             versionNameSuffix = "-debug"
         }
     }
-    
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    
+
     kotlinOptions {
         jvmTarget = "11"
         freeCompilerArgs += listOf(
@@ -63,17 +63,17 @@ android {
             "-Xno-receiver-assertions"
         )
     }
-    
+
     buildFeatures {
         compose = true
         aidl = true
         buildConfig = true
     }
-    
+
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.compose.get()
     }
-    
+
     testOptions {
         unitTests {
             isReturnDefaultValues = true
@@ -81,7 +81,7 @@ android {
         }
         animationsDisabled = true
     }
-    
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -89,12 +89,16 @@ android {
             excludes += "/META-INF/maven/**"
             excludes += "/androidsupportmultidexversion.txt"
         }
-        
+
         jniLibs {
             useLegacyPackaging = false
         }
     }
-    
+
+    lint {
+        disable += "NullSafeMutableLiveData"
+    }
+
     // Bundle configuration for APK size optimization
     bundle {
         language {
@@ -113,18 +117,18 @@ dependencies {
 
     implementation(libs.androidx.foundation)
     compileOnly(project(":hiddenapi"))
-    
+
     // Root & Shizuku
     implementation(libs.libsu.core)
     implementation(libs.libsu.service)
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
-    
+
     // Core Android
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    
+
     // Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -132,15 +136,15 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    
+
     // Dependency Injection
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
     kapt(libs.hilt.compiler)
-    
+
     // Data Storage
     implementation(libs.androidx.datastore.preferences)
-    
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

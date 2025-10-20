@@ -92,3 +92,16 @@ class UpdateToggleModeConfigUseCase @Inject constructor(
         preferencesRepository.setToggleModeConfig(config)
     }
 }
+
+/**
+ * Use case for requesting permission for a specific control method
+ */
+class RequestPermissionUseCase @Inject constructor(
+    private val networkControlRepository: NetworkControlRepository,
+    private val preferencesRepository: PreferencesRepository
+) {
+    suspend operator fun invoke(method: ControlMethod? = null): Boolean {
+        val controlMethod = method ?: preferencesRepository.getControlMethod()
+        return networkControlRepository.requestPermission(controlMethod)
+    }
+}

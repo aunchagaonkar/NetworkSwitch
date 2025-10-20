@@ -24,44 +24,57 @@ class SettingsViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository,
     private val networkControlRepository: NetworkControlRepository
 ) : ViewModel() {
-    
+
     val controlMethod: StateFlow<ControlMethod> = preferencesRepository.observeControlMethod()
         .stateIn(
             scope = viewModelScope,
             started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
             initialValue = ControlMethod.SHIZUKU
         )
-    
+
+    val hideLauncherIcon: StateFlow<Boolean> = preferencesRepository.observeHideLauncherIcon()
+        .stateIn(
+            scope = viewModelScope,
+            started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
     // Compatibility status for each method
     var rootCompatibility by mutableStateOf<CompatibilityState>(CompatibilityState.Pending)
         private set
-    
+
     var shizukuCompatibility by mutableStateOf<CompatibilityState>(CompatibilityState.Pending)
         private set
-    
+
     init {
         checkAllCompatibility()
     }
-    
+
     fun updateControlMethod(method: ControlMethod) {
         viewModelScope.launch {
             preferencesRepository.setControlMethod(method)
         }
     }
-    
+
+    fun updateHideLauncherIcon(hide: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setHideLauncherIcon(hide)
+        }
+    }
+
     fun retryCompatibilityCheck() {
         checkAllCompatibility()
     }
-    
+
     private fun checkAllCompatibility() {
         viewModelScope.launch {
             rootCompatibility = CompatibilityState.Pending
             shizukuCompatibility = CompatibilityState.Pending
-            
+
             // Check both methods in parallel
             val rootResult = async { networkControlRepository.checkCompatibility(ControlMethod.ROOT) }
             val shizukuResult = async { networkControlRepository.checkCompatibility(ControlMethod.SHIZUKU) }
-            
+
             rootCompatibility = rootResult.await()
             shizukuCompatibility = shizukuResult.await()
         }
