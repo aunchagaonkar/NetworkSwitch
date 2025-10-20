@@ -39,4 +39,16 @@ class PreferencesRepositoryImpl @Inject constructor(
     override fun observeToggleModeConfig(): Flow<ToggleModeConfig> {
         return preferencesDataSource.observeToggleModeConfig()
     }
+    
+    override suspend fun getSelectedSubscriptionId(): Int {
+        return preferencesDataSource.getSelectedSubscriptionId()
+    }
+    
+    override suspend fun setSelectedSubscriptionId(subscriptionId: Int) {
+        preferencesDataSource.setSelectedSubscriptionId(subscriptionId)
+    }
+    
+    override fun observeSelectedSubscriptionId(): Flow<Int> {
+        return preferencesDataSource.observeSelectedSubscriptionId()
+    }
 }

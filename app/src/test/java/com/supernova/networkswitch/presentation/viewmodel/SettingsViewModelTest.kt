@@ -2,8 +2,12 @@ package com.supernova.networkswitch.presentation.viewmodel
 
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
+import com.supernova.networkswitch.domain.model.SimInfo
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
+import com.supernova.networkswitch.domain.usecase.GetAvailableSimsUseCase
+import com.supernova.networkswitch.domain.usecase.GetSelectedSubscriptionIdUseCase
+import com.supernova.networkswitch.domain.usecase.SetSelectedSubscriptionIdUseCase
 import com.supernova.networkswitch.util.CoroutineTestRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -24,6 +28,9 @@ class SettingsViewModelTest {
 
     private lateinit var preferencesRepository: PreferencesRepository
     private lateinit var networkControlRepository: NetworkControlRepository
+    private lateinit var getAvailableSimsUseCase: GetAvailableSimsUseCase
+    private lateinit var getSelectedSubscriptionIdUseCase: GetSelectedSubscriptionIdUseCase
+    private lateinit var setSelectedSubscriptionIdUseCase: SetSelectedSubscriptionIdUseCase
 
     private lateinit var viewModel: SettingsViewModel
 
@@ -31,14 +38,23 @@ class SettingsViewModelTest {
     fun setUp() {
         preferencesRepository = mockk(relaxed = true)
         networkControlRepository = mockk(relaxed = true)
+        getAvailableSimsUseCase = mockk(relaxed = true)
+        getSelectedSubscriptionIdUseCase = mockk(relaxed = true)
+        setSelectedSubscriptionIdUseCase = mockk(relaxed = true)
 
         coEvery { preferencesRepository.observeControlMethod() } returns flowOf(ControlMethod.SHIZUKU)
+        coEvery { preferencesRepository.observeSelectedSubscriptionId() } returns flowOf(-1)
+        coEvery { getAvailableSimsUseCase() } returns Result.success(emptyList())
+        coEvery { getSelectedSubscriptionIdUseCase() } returns -1
     }
 
     private fun createViewModel() {
         viewModel = SettingsViewModel(
             preferencesRepository,
-            networkControlRepository
+            networkControlRepository,
+            getAvailableSimsUseCase,
+            getSelectedSubscriptionIdUseCase,
+            setSelectedSubscriptionIdUseCase
         )
     }
 
@@ -76,5 +92,38 @@ class SettingsViewModelTest {
         viewModel.retryCompatibilityCheck()
         coVerify(exactly = 2) { networkControlRepository.checkCompatibility(ControlMethod.ROOT) }
         coVerify(exactly = 2) { networkControlRepository.checkCompatibility(ControlMethod.SHIZUKU) }
+    }
+
+    @Test
+    fun `clearSimError resets simError state`() = runTest {
+        createViewModel()
+        // Manually set error by trying to select invalid SIM
+        viewModel.selectSim(999) // Invalid SIM ID
+        viewModel.clearSimError()
+        assertEquals(null, viewModel.simError.value)
+    }
+
+    @Test
+    fun `selectSim sets error for invalid SIM`() = runTest {
+        // Mock available SIMs to contain only simId = 1
+        coEvery { getAvailableSimsUseCase() } returns Result.success(
+            listOf(SimInfo(subscriptionId = 1, simSlotIndex = 0, displayName = "SIM 1"))
+        )
+        createViewModel()
+        val invalidSimId = 999
+        viewModel.selectSim(invalidSimId)
+        assertEquals("Selected SIM is not available", viewModel.simError.value)
+    }
+
+    @Test
+    fun `selectSim clears error for valid SIM`() = runTest {
+        val validSimId = 1
+        // Mock available SIMs to contain simId = 1
+        coEvery { getAvailableSimsUseCase() } returns Result.success(
+            listOf(SimInfo(subscriptionId = 1, simSlotIndex = 0, displayName = "SIM 1"))
+        )
+        createViewModel()
+        viewModel.selectSim(validSimId)
+        assertEquals(null, viewModel.simError.value)
     }
 }

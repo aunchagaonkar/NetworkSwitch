@@ -89,3 +89,12 @@ sealed class CompatibilityState {
     data class Incompatible(val reason: String) : CompatibilityState()
     data class PermissionDenied(val method: ControlMethod) : CompatibilityState()
 }
+
+/**
+ * Represents information about a SIM card in the device
+ */
+data class SimInfo(
+    val subscriptionId: Int,
+    val simSlotIndex: Int,
+    val displayName: String
+)

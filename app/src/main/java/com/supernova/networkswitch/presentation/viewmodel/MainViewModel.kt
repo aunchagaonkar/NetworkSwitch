@@ -1,6 +1,5 @@
 package com.supernova.networkswitch.presentation.viewmodel
 
-import android.telephony.SubscriptionManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.mutableStateOf
@@ -12,6 +11,7 @@ import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.usecase.CheckCompatibilityUseCase
 import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
+import com.supernova.networkswitch.domain.usecase.GetEffectiveSubscriptionIdUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.UpdateControlMethodUseCase
 import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
@@ -25,6 +25,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 class MainViewModel @Inject constructor(
     private val checkCompatibilityUseCase: CheckCompatibilityUseCase,
     private val getCurrentNetworkModeUseCase: GetCurrentNetworkModeUseCase,
+    private val getEffectiveSubscriptionIdUseCase: GetEffectiveSubscriptionIdUseCase,
     private val toggleNetworkModeUseCase: ToggleNetworkModeUseCase,
     private val updateControlMethodUseCase: UpdateControlMethodUseCase,
     private val getToggleModeConfigUseCase: GetToggleModeConfigUseCase,
@@ -138,7 +139,8 @@ class MainViewModel @Inject constructor(
         
         isLoading = true
         viewModelScope.launch {
-            val subId = SubscriptionManager.getDefaultDataSubscriptionId()
+            // Use the user's selected subscription ID (or default if "Auto" selected)
+            val subId = getEffectiveSubscriptionIdUseCase()
             
             toggleNetworkModeUseCase(subId)
                 .onSuccess { newMode ->
@@ -166,7 +168,8 @@ class MainViewModel @Inject constructor(
      */
     private fun refreshNetworkState() {
         viewModelScope.launch {
-            val subId = SubscriptionManager.getDefaultDataSubscriptionId()
+            // Use the user's selected subscription ID (or default if "Auto" selected)
+            val subId = getEffectiveSubscriptionIdUseCase()
             
             getCurrentNetworkModeUseCase(subId)
                 .onSuccess { mode ->

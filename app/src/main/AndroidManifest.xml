@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Permission required to read phone state and detect SIM cards -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
     <application
         android:name=".NetworkSwitchApplication"
         android:allowBackup="true"
@@ -30,6 +33,13 @@
             android:exported="false"
             android:label="Settings"
             android:parentActivityName=".presentation.ui.activity.MainActivity"
+            android:theme="@style/Theme.NetworkSwitch" />
+            
+        <activity
+            android:name=".presentation.ui.activity.AboutActivity"
+            android:exported="false"
+            android:label="About"
+            android:parentActivityName=".presentation.ui.activity.SettingsActivity"
             android:theme="@style/Theme.NetworkSwitch" />
             
         <activity

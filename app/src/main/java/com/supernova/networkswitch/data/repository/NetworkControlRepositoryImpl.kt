@@ -1,5 +1,6 @@
 package com.supernova.networkswitch.data.repository
 
+import android.telephony.SubscriptionManager
 import com.supernova.networkswitch.data.source.NetworkControlDataSource
 import com.supernova.networkswitch.data.source.RootNetworkControlDataSource
 import com.supernova.networkswitch.data.source.ShizukuNetworkControlDataSource
@@ -23,7 +24,8 @@ class NetworkControlRepositoryImpl @Inject constructor(
     
     override suspend fun checkCompatibility(method: ControlMethod): CompatibilityState {
         val dataSource = getDataSource(method)
-        val subId = android.telephony.SubscriptionManager.getDefaultDataSubscriptionId()
+        // Use selected subscription ID for compatibility check
+        val subId = getEffectiveSubscriptionId()
         return dataSource.checkCompatibility(subId)
     }
 
@@ -31,6 +33,7 @@ class NetworkControlRepositoryImpl @Inject constructor(
         return try {
             val method = preferencesRepository.getControlMethod()
             val dataSource = getDataSource(method)
+            // Use the provided subId (which should come from getEffectiveSubscriptionId in callers)
             dataSource.getCurrentNetworkMode(subId)
         } catch (e: Exception) {
             null
@@ -41,6 +44,7 @@ class NetworkControlRepositoryImpl @Inject constructor(
         return try {
             val method = preferencesRepository.getControlMethod()
             val dataSource = getDataSource(method)
+            // Use the provided subId (which should come from getEffectiveSubscriptionId in callers)
             dataSource.setNetworkMode(subId, mode)
             Result.success(Unit)
         } catch (e: Exception) {
@@ -54,6 +58,21 @@ class NetworkControlRepositoryImpl @Inject constructor(
     override suspend fun resetConnections() {
         rootDataSource.resetConnection()
         shizukuDataSource.resetConnection()
+    }
+    
+    /**
+     * Get the effective subscription ID to use for network operations
+     * Returns the user's selected subscription ID from preferences, or the default if -1
+     */
+    private suspend fun getEffectiveSubscriptionId(): Int {
+        val selectedSubId = preferencesRepository.getSelectedSubscriptionId()
+        return if (selectedSubId == -1) {
+            // User selected "Auto" - use system default
+            SubscriptionManager.getDefaultDataSubscriptionId()
+        } else {
+            // User selected a specific SIM
+            selectedSubId
+        }
     }
 
     private fun getDataSource(method: ControlMethod): NetworkControlDataSource {
