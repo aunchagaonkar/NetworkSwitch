@@ -65,3 +65,13 @@ interface PreferencesRepository {
      */
     fun observeToggleModeConfig(): Flow<ToggleModeConfig>
 }
+
+/**
+ * Repository interface for network performance monitoring
+ */
+interface NetworkStatsRepository {
+    /**
+     * Observe real-time network statistics
+     */
+    fun observeNetworkStats(): Flow<com.supernova.networkswitch.domain.model.NetworkStats>
+}

@@ -89,3 +89,13 @@ sealed class CompatibilityState {
     data class Incompatible(val reason: String) : CompatibilityState()
     data class PermissionDenied(val method: ControlMethod) : CompatibilityState()
 }
+
+/**
+ * Real-time network performance metrics
+ */
+data class NetworkStats(
+    val downloadSpeedBps: Long = 0,
+    val uploadSpeedBps: Long = 0,
+    val signalStrengthDbm: Int = 0,
+    val signalLevel: Int = 0 // 0 to 4
+)
