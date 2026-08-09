@@ -145,15 +145,21 @@ class RootNetworkControllerService : RootService() {
             if ((bitmask and BITMASK_NR) != 0L && (bitmask and BITMASK_LTE) != 0L) return 24
             if ((bitmask and BITMASK_NR) != 0L) return 23
             if ((bitmask and BITMASK_LTE) != 0L) return 11
-            
-            return 0 
+            if ((bitmask and BITMASK_TDSCDMA) != 0L) return 13
+            if ((bitmask and BITMASK_WCDMA) != 0L) return 2
+            if ((bitmask and BITMASK_GSM) != 0L) return 1
+            if ((bitmask and BITMASK_CDMA) != 0L && (bitmask and BITMASK_EVDO) != 0L) return 4
+            if ((bitmask and BITMASK_CDMA) != 0L) return 5
+            if ((bitmask and BITMASK_EVDO) != 0L) return 6
+
+            return 0
         }
     }
 
     override fun onBind(intent: Intent) = object : IRootController.Stub() {
 
         override fun compatibilityCheck(subId: Int): Boolean {
-            return getITelephony() != null
+            return getCurrentNetworkMode(subId) != -1
         }
 
         override fun getCurrentNetworkMode(subId: Int): Int {
