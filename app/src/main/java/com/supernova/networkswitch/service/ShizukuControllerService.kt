@@ -161,6 +161,7 @@ class ShizukuControllerService() : IShizukuController.Stub() {
             val iTelephony = getITelephony() ?: return -1
             val methods = iTelephony.javaClass.methods
             
+            // Try getAllowedNetworkTypesForReason (Android 11+)
             for (m in methods) {
                 if (m.name == "getAllowedNetworkTypesForReason") {
                     try {
@@ -173,10 +174,29 @@ class ShizukuControllerService() : IShizukuController.Stub() {
                         }
                         
                         val mode = mapBitmaskToNetworkMode(bitmask)
-                        Log.i(TAG, "Shizuku: getCurrentNetworkMode(subId=$subId) -> $mode (bitmask=$bitmask)")
+                        Log.i(TAG, "Shizuku: getCurrentNetworkMode(subId=$subId) via getAllowedNetworkTypesForReason -> $mode (bitmask=$bitmask)")
                         return mode
                     } catch (_: Exception) {
                         // Continue to next method if one fails
+                    }
+                }
+            }
+
+            // Fallback: Try getPreferredNetworkType (Android < 11)
+            for (m in methods) {
+                if (m.name == "getPreferredNetworkType") {
+                    try {
+                        val mode = if (m.parameterCount == 1) {
+                            m.invoke(iTelephony, subId) as Int
+                        } else if (m.parameterCount == 2 && m.parameterTypes[1] == String::class.java) {
+                            m.invoke(iTelephony, subId, "com.android.phone") as Int
+                        } else {
+                            continue
+                        }
+                        Log.i(TAG, "Shizuku: getCurrentNetworkMode(subId=$subId) via getPreferredNetworkType -> $mode")
+                        return mode
+                    } catch (_: Exception) {
+                        // Try next
                     }
                 }
             }
