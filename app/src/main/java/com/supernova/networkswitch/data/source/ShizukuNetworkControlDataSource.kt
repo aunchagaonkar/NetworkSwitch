@@ -40,7 +40,13 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
             }
             
             // Check if Shizuku permission is granted
-            if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            val permission = try {
+                Shizuku.checkSelfPermission()
+            } catch (e: Exception) {
+                PackageManager.PERMISSION_DENIED
+            }
+            
+            if (permission != PackageManager.PERMISSION_GRANTED) {
                 return CompatibilityState.PermissionDenied(com.supernova.networkswitch.domain.model.ControlMethod.SHIZUKU)
             }
             

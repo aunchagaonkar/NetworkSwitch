@@ -1,19 +1,18 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
-    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.legacy.kapt)
 }
 
 android {
     namespace = "com.supernova.networkswitch"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.supernova.networkswitch"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
 
@@ -23,7 +22,9 @@ android {
             useSupportLibrary = true
         }
         
-        resourceConfigurations += listOf("en", "xxhdpi")
+        androidResources {
+            localeFilters += "en"
+        }
     }
 
     buildTypes {
@@ -49,19 +50,8 @@ android {
     }
     
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    
-    kotlinOptions {
-        jvmTarget = "11"
-        freeCompilerArgs += listOf(
-            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            "-Xjvm-default=all",
-            "-Xno-param-assertions",
-            "-Xno-call-assertions",
-            "-Xno-receiver-assertions"
-        )
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     
     buildFeatures {
@@ -123,7 +113,9 @@ dependencies {
     // Core Android
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.hiddenapibypass)
     
     // Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -136,7 +128,7 @@ dependencies {
     // Dependency Injection
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
-    kapt(libs.hilt.compiler)
+    "kapt"(libs.hilt.compiler)
     
     // Data Storage
     implementation(libs.androidx.datastore.preferences)
@@ -154,5 +146,5 @@ dependencies {
 
     // Hilt Testing
     testImplementation(libs.hilt.android.testing)
-    kaptTest(libs.hilt.compiler)
+    "kaptTest"(libs.hilt.compiler)
 }
