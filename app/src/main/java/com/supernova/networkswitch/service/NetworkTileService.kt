@@ -3,36 +3,42 @@ package com.supernova.networkswitch.service
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.telephony.SubscriptionManager
-import com.supernova.networkswitch.domain.model.ControlMethod
+import android.util.Log
+import com.supernova.networkswitch.R
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
+import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
-import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
-import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.*
-import androidx.lifecycle.ProcessLifecycleOwner
-import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class NetworkTileService : TileService() {
-    
+
     @Inject
     lateinit var getCurrentNetworkModeUseCase: GetCurrentNetworkModeUseCase
-    
+
     @Inject
     lateinit var toggleNetworkModeUseCase: ToggleNetworkModeUseCase
-    
-    @Inject
-    lateinit var getToggleModeConfigUseCase: GetToggleModeConfigUseCase
-    
+
     @Inject
     lateinit var preferencesRepository: PreferencesRepository
-    
+
+    /**
+     * Scoped to the listening window: `qsTile` is only non-null between
+     * onStartListening and onStopListening, so work outliving the service cannot
+     * update the tile.
+     */
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    
+
     private var currentNetworkMode: NetworkMode? = null
     private var toggleConfig: ToggleModeConfig? = null
 
@@ -40,39 +46,28 @@ class NetworkTileService : TileService() {
         super.onStartListening()
         serviceScope.launch {
             try {
-                // Observe toggle configuration changes
                 preferencesRepository.observeToggleModeConfig().collect { newConfig ->
                     toggleConfig = newConfig
                     refreshNetworkState()
                 }
-            } catch (_: Exception) {
-                // Handle errors silently
+            } catch (e: Exception) {
+                Log.e(TAG, "Tile: Failed to observe toggle config", e)
             }
         }
-    }
-
-    override fun onStopListening() {
-        super.onStopListening()
-        // Clean up any ongoing operations when tile becomes inactive
     }
 
     override fun onClick() {
         super.onClick()
-        android.util.Log.d("NetworkSwitch", "Tile: onClick triggered")
-        android.widget.Toast.makeText(this, "Switching network...", android.widget.Toast.LENGTH_SHORT).show()
-        
-        // Provide immediate visual feedback
-        qsTile?.let {
-            it.state = Tile.STATE_UNAVAILABLE
-            it.subtitle = "Processing..."
-            it.updateTile()
+
+        // Signal progress in the subtitle only; changing state would make the tile
+        // unclickable until the toggle returns.
+        qsTile?.let { tile ->
+            tile.subtitle = getString(R.string.tile_switching)
+            tile.updateTile()
         }
-        
+
         if (isLocked) {
-            android.util.Log.d("NetworkSwitch", "Tile: Device is locked, unlocking and running...")
-            unlockAndRun {
-                performToggle()
-            }
+            unlockAndRun { performToggle() }
         } else {
             performToggle()
         }
@@ -80,25 +75,18 @@ class NetworkTileService : TileService() {
 
     private fun performToggle() {
         val subId = SubscriptionManager.getDefaultDataSubscriptionId()
-        android.util.Log.d("NetworkSwitch", "Tile: performToggle for subId: $subId")
-        
-        // Use a more persistent scope to ensure work completes even if service is destroyed
-        CoroutineScope(ProcessLifecycleOwner.get().lifecycleScope.coroutineContext + Dispatchers.IO).launch {
+
+        serviceScope.launch {
             try {
-                toggleNetworkModeUseCase(subId)
-                    .onSuccess { newMode ->
-                        android.util.Log.d("NetworkSwitch", "Tile: Toggle success, new mode: ${newMode.displayName}")
-                        currentNetworkMode = newMode
-                        withContext(Dispatchers.Main) {
-                            updateTileState()
-                        }
-                    }
-                    .onFailure { e ->
-                        android.util.Log.e("NetworkSwitch", "Tile: Toggle failed", e)
-                        refreshNetworkState()
-                    }
+                // The binder call into the root/Shizuku process can hang indefinitely.
+                withTimeout(TOGGLE_TIMEOUT_MS) {
+                    toggleNetworkModeUseCase(subId)
+                        .onSuccess { newMode -> currentNetworkMode = newMode }
+                        .onFailure { e -> Log.e(TAG, "Tile: Toggle failed", e) }
+                }
             } catch (e: Exception) {
-                android.util.Log.e("NetworkSwitch", "Tile: Error in performToggle", e)
+                Log.e(TAG, "Tile: Error toggling network mode", e)
+            } finally {
                 refreshNetworkState()
             }
         }
@@ -106,49 +94,49 @@ class NetworkTileService : TileService() {
 
     private suspend fun refreshNetworkState() {
         val subId = SubscriptionManager.getDefaultDataSubscriptionId()
-        
+
         try {
             getCurrentNetworkModeUseCase(subId)
-                .onSuccess { networkMode ->
-                    currentNetworkMode = networkMode
-                    withContext(Dispatchers.Main) {
-                        updateTileState()
-                    }
-                }
-        } catch (_: Exception) {
-            // Handle errors silently
+                .onSuccess { networkMode -> currentNetworkMode = networkMode }
+                .onFailure { e -> Log.e(TAG, "Tile: Failed to read network mode", e) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Tile: Error refreshing network state", e)
         }
+
+        withContext(Dispatchers.Main) { updateTileState() }
     }
-    
+
     private fun updateTileState() {
         try {
+            // Null outside the listening window; the next onStartListening repaints.
             val tile = qsTile ?: return
             val config = toggleConfig
-            
+
             if (config != null) {
                 tile.state = Tile.STATE_ACTIVE
-                
-                // Show current mode as label and next mode as subtitle
-                val currentMode = currentNetworkMode ?: config.getCurrentMode()
-                tile.label = currentMode.displayName
-                tile.subtitle = "Next: ${config.getNextMode().displayName}"
-                
-                // Update icon based on mode if needed
-                // tile.icon = Icon.createWithResource(this, R.drawable.ic_...)
+                tile.label = (currentNetworkMode ?: config.getCurrentMode()).displayName
+                tile.subtitle = getString(
+                    R.string.tile_next_mode,
+                    config.getNextMode().displayName,
+                )
             } else {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = "Network Switch"
-                tile.subtitle = "Tap to load"
+                tile.label = getString(R.string.network_switch)
+                tile.subtitle = getString(R.string.tile_not_loaded)
             }
             tile.updateTile()
-            android.util.Log.d("NetworkSwitch", "Tile: updateTileState finished")
         } catch (e: Exception) {
-            android.util.Log.e("NetworkSwitch", "Tile: Failed to update tile state", e)
+            Log.e(TAG, "Tile: Failed to update tile state", e)
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
+    }
+
+    private companion object {
+        const val TAG = "NetworkSwitch"
+        const val TOGGLE_TIMEOUT_MS = 10_000L
     }
 }
