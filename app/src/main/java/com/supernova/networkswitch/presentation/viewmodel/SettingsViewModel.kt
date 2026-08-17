@@ -12,6 +12,7 @@ import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.usecase.GetAvailableSimsUseCase
+import com.supernova.networkswitch.domain.usecase.GetEffectiveSubscriptionIdUseCase
 import com.supernova.networkswitch.domain.usecase.GetSelectedSubscriptionIdUseCase
 import com.supernova.networkswitch.domain.usecase.SetSelectedSubscriptionIdUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,6 +33,7 @@ class SettingsViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository,
     private val networkControlRepository: NetworkControlRepository,
     private val getAvailableSimsUseCase: GetAvailableSimsUseCase,
+    private val getEffectiveSubscriptionId: GetEffectiveSubscriptionIdUseCase,
     private val getSelectedSubscriptionIdUseCase: GetSelectedSubscriptionIdUseCase,
     private val setSelectedSubscriptionIdUseCase: SetSelectedSubscriptionIdUseCase
 ) : ViewModel() {
@@ -91,9 +93,10 @@ class SettingsViewModel @Inject constructor(
             rootCompatibility = CompatibilityState.Pending
             shizukuCompatibility = CompatibilityState.Pending
             
-            // Check both methods in parallel
-            val rootResult = async { networkControlRepository.checkCompatibility(ControlMethod.ROOT) }
-            val shizukuResult = async { networkControlRepository.checkCompatibility(ControlMethod.SHIZUKU) }
+            // Both methods are probed against the SIM the app will actually operate on
+            val subId = getEffectiveSubscriptionId()
+            val rootResult = async { networkControlRepository.checkCompatibility(ControlMethod.ROOT, subId) }
+            val shizukuResult = async { networkControlRepository.checkCompatibility(ControlMethod.SHIZUKU, subId) }
             
             rootCompatibility = rootResult.await()
             shizukuCompatibility = shizukuResult.await()

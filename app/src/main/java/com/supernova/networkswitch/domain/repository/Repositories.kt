@@ -15,7 +15,7 @@ interface NetworkControlRepository {
     /**
      * Check if network control is compatible with current device/method
      */
-    suspend fun checkCompatibility(method: ControlMethod): CompatibilityState
+    suspend fun checkCompatibility(method: ControlMethod, subId: Int): CompatibilityState
     
     /**
      * Get current network mode

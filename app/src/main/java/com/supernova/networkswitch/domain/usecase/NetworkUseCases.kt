@@ -14,11 +14,12 @@ import javax.inject.Inject
 
 class CheckCompatibilityUseCase @Inject constructor(
     private val networkControlRepository: NetworkControlRepository,
-    private val preferencesRepository: PreferencesRepository
+    private val preferencesRepository: PreferencesRepository,
+    private val getEffectiveSubscriptionId: GetEffectiveSubscriptionIdUseCase
 ) {
     suspend operator fun invoke(): CompatibilityState {
         val controlMethod = preferencesRepository.getControlMethod()
-        return networkControlRepository.checkCompatibility(controlMethod)
+        return networkControlRepository.checkCompatibility(controlMethod, getEffectiveSubscriptionId())
     }
 }
 
