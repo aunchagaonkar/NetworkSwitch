@@ -2,6 +2,7 @@ package com.supernova.networkswitch.domain.usecase
 
 import android.telephony.SubscriptionManager
 import com.supernova.networkswitch.domain.model.SimInfo
+import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.repository.SimRepository
 import io.mockk.coEvery
@@ -63,7 +64,7 @@ class GetEffectiveSubscriptionIdUseCaseTest {
             SimInfo(subscriptionId = 42, simSlotIndex = 0, displayName = "SIM 1")
         )
         coEvery { preferencesRepository.getSelectedSubscriptionId() } returns selectedSubId
-        coEvery { simRepository.getAvailableSimCards() } returns availableSims
+        coEvery { simRepository.getAvailableSimCards() } returns SimQueryResult.Loaded(availableSims)
         
         // When
         val result = useCase()
@@ -80,7 +81,7 @@ class GetEffectiveSubscriptionIdUseCaseTest {
             SimInfo(subscriptionId = 1, simSlotIndex = 0, displayName = "SIM 1")
         )
         coEvery { preferencesRepository.getSelectedSubscriptionId() } returns selectedSubId
-        coEvery { simRepository.getAvailableSimCards() } returns availableSims
+        coEvery { simRepository.getAvailableSimCards() } returns SimQueryResult.Loaded(availableSims)
         coEvery { preferencesRepository.setSelectedSubscriptionId(-1) } returns Unit
         
         // When
@@ -91,20 +92,41 @@ class GetEffectiveSubscriptionIdUseCaseTest {
         coVerify { preferencesRepository.setSelectedSubscriptionId(-1) }
     }
     
+    /**
+     * A denied permission is the reachable form of "cannot determine": the repository
+     * reports it rather than throwing. The selection must survive it untouched.
+     */
     @Test
-    fun `should use selected ID when cannot check SIM availability`() = runTest {
-        // Given
+    fun `should keep the selection and not reset it when permission is denied`() = runTest {
+        val selectedSubId = 42
+        coEvery { preferencesRepository.getSelectedSubscriptionId() } returns selectedSubId
+        coEvery { simRepository.getAvailableSimCards() } returns SimQueryResult.PermissionDenied
+
+        assertEquals(selectedSubId, useCase())
+        coVerify(exactly = 0) { preferencesRepository.setSelectedSubscriptionId(any()) }
+    }
+
+    @Test
+    fun `should keep the selection and not reset it when the query fails`() = runTest {
+        val selectedSubId = 42
+        coEvery { preferencesRepository.getSelectedSubscriptionId() } returns selectedSubId
+        coEvery { simRepository.getAvailableSimCards() } returns
+            SimQueryResult.Failed(IllegalStateException("transient"))
+
+        assertEquals(selectedSubId, useCase())
+        coVerify(exactly = 0) { preferencesRepository.setSelectedSubscriptionId(any()) }
+    }
+
+    @Test
+    fun `should use selected ID when the repository throws unexpectedly`() = runTest {
         val selectedSubId = 42
         coEvery { preferencesRepository.getSelectedSubscriptionId() } returns selectedSubId
         coEvery { simRepository.getAvailableSimCards() } throws SecurityException("Permission denied")
-        
-        // When
-        val result = useCase()
-        
-        // Then
-        assertEquals(selectedSubId, result)
+
+        assertEquals(selectedSubId, useCase())
+        coVerify(exactly = 0) { preferencesRepository.setSelectedSubscriptionId(any()) }
     }
-    
+
     @Test
     fun `should return subscription ID 1 when user selected SIM 1 and it exists`() = runTest {
         // Given
@@ -113,7 +135,7 @@ class GetEffectiveSubscriptionIdUseCaseTest {
             SimInfo(subscriptionId = 2, simSlotIndex = 1, displayName = "SIM 2")
         )
         coEvery { preferencesRepository.getSelectedSubscriptionId() } returns 1
-        coEvery { simRepository.getAvailableSimCards() } returns availableSims
+        coEvery { simRepository.getAvailableSimCards() } returns SimQueryResult.Loaded(availableSims)
         
         // When
         val result = useCase()
@@ -130,7 +152,7 @@ class GetEffectiveSubscriptionIdUseCaseTest {
             SimInfo(subscriptionId = 2, simSlotIndex = 1, displayName = "SIM 2")
         )
         coEvery { preferencesRepository.getSelectedSubscriptionId() } returns 2
-        coEvery { simRepository.getAvailableSimCards() } returns availableSims
+        coEvery { simRepository.getAvailableSimCards() } returns SimQueryResult.Loaded(availableSims)
         
         // When
         val result = useCase()

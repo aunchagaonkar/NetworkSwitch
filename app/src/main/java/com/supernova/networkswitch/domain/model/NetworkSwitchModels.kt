@@ -98,3 +98,16 @@ data class SimInfo(
     val simSlotIndex: Int,
     val displayName: String
 )
+
+/**
+ * Outcome of querying the device for SIM cards.
+ *
+ * [Loaded] is the only outcome that reports the true set of SIMs. The others mean the
+ * set could not be determined, which is not the same as the device having no SIMs — a
+ * stored SIM selection must survive them.
+ */
+sealed interface SimQueryResult {
+    data class Loaded(val sims: List<SimInfo>) : SimQueryResult
+    data object PermissionDenied : SimQueryResult
+    data class Failed(val cause: Throwable) : SimQueryResult
+}

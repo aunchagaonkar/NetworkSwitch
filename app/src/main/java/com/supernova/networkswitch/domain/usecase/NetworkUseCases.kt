@@ -5,6 +5,7 @@ import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.SimInfo
+import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
@@ -102,12 +103,11 @@ class UpdateToggleModeConfigUseCase @Inject constructor(
 class GetAvailableSimsUseCase @Inject constructor(
     private val simRepository: SimRepository
 ) {
-    suspend operator fun invoke(): Result<List<SimInfo>> {
+    suspend operator fun invoke(): SimQueryResult {
         return try {
-            val sims = simRepository.getAvailableSimCards()
-            Result.success(sims)
+            simRepository.getAvailableSimCards()
         } catch (e: Exception) {
-            Result.failure(e)
+            SimQueryResult.Failed(e)
         }
     }
 }
@@ -145,32 +145,33 @@ class GetEffectiveSubscriptionIdUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(): Int {
         val selectedSubId = preferencesRepository.getSelectedSubscriptionId()
-        
+
         // If Auto mode (-1), use system default
         if (selectedSubId == -1) {
             return SubscriptionManager.getDefaultDataSubscriptionId()
         }
-        
-        // Validate that the selected SIM still exists
-        val availableSims = try {
+
+        val query = try {
             simRepository.getAvailableSimCards()
         } catch (e: Exception) {
-            // If we can't check, use the selected ID anyway
-            return selectedSubId
+            SimQueryResult.Failed(e)
         }
-        
-        // Check if the selected SIM is still available
-        val isSimAvailable = availableSims.any { it.subscriptionId == selectedSubId }
-        
-        return if (isSimAvailable) {
-            // Selected SIM still exists, use it
+
+        // Only a successful query proves the SIM is gone. Anything else leaves the
+        // selection intact, so a denied permission or a transient failure cannot
+        // silently discard it.
+        val sims = when (query) {
+            is SimQueryResult.Loaded -> query.sims
+            SimQueryResult.PermissionDenied, is SimQueryResult.Failed -> return selectedSubId
+        }
+
+        return if (sims.any { it.subscriptionId == selectedSubId }) {
             selectedSubId
         } else {
-            // Selected SIM was removed, fall back to default and reset preference
             try {
                 preferencesRepository.setSelectedSubscriptionId(-1)
             } catch (e: Exception) {
-                // Silent catch 
+                // Selection could not be reset; the default is still the safe target.
             }
             SubscriptionManager.getDefaultDataSubscriptionId()
         }

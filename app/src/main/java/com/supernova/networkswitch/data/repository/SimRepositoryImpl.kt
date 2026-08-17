@@ -6,8 +6,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.supernova.networkswitch.domain.model.SimInfo
+import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.repository.SimRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -22,36 +24,40 @@ class SimRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : SimRepository {
 
+    private companion object {
+        const val TAG = "NetworkSwitch"
+    }
+
     private val subscriptionManager: SubscriptionManager? by lazy {
         context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
     }
 
-    override suspend fun getAvailableSimCards(): List<SimInfo> {
-        // Check if we have the required permission
+    override suspend fun getAvailableSimCards(): SimQueryResult {
         if (!hasReadPhoneStatePermission()) {
-            return emptyList()
+            return SimQueryResult.PermissionDenied
         }
 
-        val manager = subscriptionManager ?: return emptyList()
+        val manager = subscriptionManager
+            ?: return SimQueryResult.Failed(IllegalStateException("SubscriptionManager unavailable"))
 
         return try {
-            // Get active subscriptions
             val subscriptions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
                 manager.activeSubscriptionInfoList ?: emptyList()
             } else {
                 emptyList()
             }
 
-            // Map to SimInfo objects
-            subscriptions.mapNotNull { subscriptionInfo ->
-                mapToSimInfo(subscriptionInfo)
-            }
+            SimQueryResult.Loaded(
+                subscriptions
+                    .mapNotNull { mapToSimInfo(it) }
+                    .sortedBy { it.simSlotIndex }
+            )
         } catch (e: SecurityException) {
-            // Permission was revoked or not granted
-            emptyList()
+            Log.w(TAG, "SIM query denied", e)
+            SimQueryResult.PermissionDenied
         } catch (e: Exception) {
-            // Handle other potential errors
-            emptyList()
+            Log.w(TAG, "SIM query failed", e)
+            SimQueryResult.Failed(e)
         }
     }
 

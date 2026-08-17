@@ -3,6 +3,7 @@ package com.supernova.networkswitch.presentation.viewmodel
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.SimInfo
+import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.usecase.GetAvailableSimsUseCase
@@ -44,7 +45,7 @@ class SettingsViewModelTest {
 
         coEvery { preferencesRepository.observeControlMethod() } returns flowOf(ControlMethod.SHIZUKU)
         coEvery { preferencesRepository.observeSelectedSubscriptionId() } returns flowOf(-1)
-        coEvery { getAvailableSimsUseCase() } returns Result.success(emptyList())
+        coEvery { getAvailableSimsUseCase() } returns SimQueryResult.Loaded(emptyList())
         coEvery { getSelectedSubscriptionIdUseCase() } returns -1
     }
 
@@ -106,7 +107,7 @@ class SettingsViewModelTest {
     @Test
     fun `selectSim sets error for invalid SIM`() = runTest {
         // Mock available SIMs to contain only simId = 1
-        coEvery { getAvailableSimsUseCase() } returns Result.success(
+        coEvery { getAvailableSimsUseCase() } returns SimQueryResult.Loaded(
             listOf(SimInfo(subscriptionId = 1, simSlotIndex = 0, displayName = "SIM 1"))
         )
         createViewModel()
@@ -119,7 +120,7 @@ class SettingsViewModelTest {
     fun `selectSim clears error for valid SIM`() = runTest {
         val validSimId = 1
         // Mock available SIMs to contain simId = 1
-        coEvery { getAvailableSimsUseCase() } returns Result.success(
+        coEvery { getAvailableSimsUseCase() } returns SimQueryResult.Loaded(
             listOf(SimInfo(subscriptionId = 1, simSlotIndex = 0, displayName = "SIM 1"))
         )
         createViewModel()

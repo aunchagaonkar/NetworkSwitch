@@ -1,16 +1,13 @@
 package com.supernova.networkswitch.service
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import androidx.core.content.ContextCompat
 import com.supernova.networkswitch.domain.model.SimInfo
+import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.repository.SimRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -25,20 +22,18 @@ class SimSwitchTileService : TileService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var listeningJob: Job? = null
 
-    private var availableSims: List<SimInfo> = emptyList()
+    private var simQuery: SimQueryResult = SimQueryResult.Loaded(emptyList())
     private var selectedSubId: Int = -1
+
+    private val availableSims: List<SimInfo>
+        get() = (simQuery as? SimQueryResult.Loaded)?.sims ?: emptyList()
 
     override fun onStartListening() {
         super.onStartListening()
         listeningJob?.cancel()
         listeningJob = serviceScope.launch {
             try {
-                // Load available SIMs first
-                availableSims = try {
-                    simRepository.getAvailableSimCards()
-                } catch (_: Exception) {
-                    emptyList()
-                }
+                simQuery = querySims()
 
                 // Then observe the selected subscription ID and update tile
                 preferencesRepository.observeSelectedSubscriptionId().collect { subId ->
@@ -66,23 +61,10 @@ class SimSwitchTileService : TileService() {
 
         serviceScope.launch {
             try {
-                // Check permission
-                if (!hasReadPhoneStatePermission()) {
-                    withContext(Dispatchers.Main) {
-                        refreshTileDisplay()
-                    }
-                    return@launch
-                }
+                simQuery = querySims()
 
-                // Refresh available SIMs in case they changed
-                availableSims = try {
-                    simRepository.getAvailableSimCards()
-                } catch (_: Exception) {
-                    emptyList()
-                }
-
-                // Single SIM or no SIMs — nothing to cycle
-                if (availableSims.size <= 1) {
+                // Cannot cycle without a known SIM set, or with a single SIM
+                if (simQuery !is SimQueryResult.Loaded || availableSims.size <= 1) {
                     withContext(Dispatchers.Main) {
                         refreshTileDisplay()
                     }
@@ -135,10 +117,18 @@ class SimSwitchTileService : TileService() {
         try {
             val tile = qsTile ?: return
 
-            if (!hasReadPhoneStatePermission()) {
+            if (simQuery is SimQueryResult.PermissionDenied) {
                 tile.state = Tile.STATE_INACTIVE
                 tile.label = "SIM Select"
                 tile.subtitle = "Permission needed"
+                tile.updateTile()
+                return
+            }
+
+            if (simQuery is SimQueryResult.Failed) {
+                tile.state = Tile.STATE_INACTIVE
+                tile.label = "SIM Select"
+                tile.subtitle = "Unavailable"
                 tile.updateTile()
                 return
             }
@@ -179,11 +169,10 @@ class SimSwitchTileService : TileService() {
         }
     }
 
-    private fun hasReadPhoneStatePermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.READ_PHONE_STATE
-        ) == PackageManager.PERMISSION_GRANTED
+    private suspend fun querySims(): SimQueryResult = try {
+        simRepository.getAvailableSimCards()
+    } catch (e: Exception) {
+        SimQueryResult.Failed(e)
     }
 
     override fun onDestroy() {

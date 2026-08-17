@@ -4,6 +4,7 @@ import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.SimInfo
+import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import kotlinx.coroutines.flow.Flow
 
@@ -89,8 +90,10 @@ interface PreferencesRepository {
  */
 interface SimRepository {
     /**
-     * Get list of all available SIM cards in the device
-     * Returns empty list if permission is not granted
+     * Query the available SIM cards, ordered by SIM slot.
+     *
+     * Returns [SimQueryResult.PermissionDenied] or [SimQueryResult.Failed] when the set
+     * cannot be determined, so callers can tell that apart from a device with no SIMs.
      */
-    suspend fun getAvailableSimCards(): List<SimInfo>
+    suspend fun getAvailableSimCards(): SimQueryResult
 }

@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.SimInfo
+import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.usecase.GetAvailableSimsUseCase
@@ -107,16 +108,20 @@ class SettingsViewModel @Inject constructor(
             _isLoadingSims.value = true
             _simError.value = null
             try {
-                val result = getAvailableSimsUseCase()
-                if (result.isSuccess) {
-                    val sims = result.getOrNull() ?: emptyList()
-                    _availableSims.value = sims
-                    
-                    // Check if previously selected SIM is still available
-                    validateSelectedSim(sims)
-                } else {
-                    _availableSims.value = emptyList()
-                    _simError.value = "Failed to detect SIM cards"
+                when (val result = getAvailableSimsUseCase()) {
+                    is SimQueryResult.Loaded -> {
+                        _availableSims.value = result.sims
+                        // Only a successful query can prove a selected SIM is gone.
+                        validateSelectedSim(result.sims)
+                    }
+                    SimQueryResult.PermissionDenied -> {
+                        _availableSims.value = emptyList()
+                        _simError.value = "Permission required to detect SIM cards"
+                    }
+                    is SimQueryResult.Failed -> {
+                        _availableSims.value = emptyList()
+                        _simError.value = "Failed to detect SIM cards"
+                    }
                 }
             } catch (e: Exception) {
                 _availableSims.value = emptyList()
