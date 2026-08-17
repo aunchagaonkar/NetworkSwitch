@@ -548,6 +548,7 @@ private fun ControlMethodCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SimSelectionCard(
     availableSims: List<com.supernova.networkswitch.domain.model.SimInfo>,

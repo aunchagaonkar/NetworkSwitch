@@ -8,14 +8,13 @@
 -overloadaggressively
 -repackageclasses ''
 
-# Remove debug logging completely in release builds
+# Strip diagnostic logging from release builds. Log.w and Log.e are excluded: they
+# are the only signal when telephony reflection fails on an unfamiliar OEM build.
 -assumenosideeffects class android.util.Log {
     public static boolean isLoggable(java.lang.String, int);
     public static int v(...);
-    public static int i(...);
-    public static int w(...);
     public static int d(...);
-    public static int e(...);
+    public static int i(...);
 }
 
 # Keep AIDL interfaces
@@ -55,16 +54,6 @@
 # Keep Android system classes that might be accessed via reflection
 -keep class android.telephony.** { *; }
 -keep class com.android.internal.telephony.** { *; }
-
-# Remove debug logging in release builds
--assumenosideeffects class android.util.Log {
-    public static boolean isLoggable(java.lang.String, int);
-    public static int v(...);
-    public static int i(...);
-    public static int w(...);
-    public static int d(...);
-    public static int e(...);
-}
 
 # Minimal attributes for crash reports (removed SourceFile for smaller APK)
 -keepattributes LineNumberTable

@@ -22,4 +22,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "Network Switch"
 include(":app")
-include(":hiddenapi")

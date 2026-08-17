@@ -9,7 +9,10 @@
     <string name="mode_b_label">Mode B</string>
     <string name="save_configuration">Save Configuration</string>
     <string name="configuration_saved">Configuration saved successfully</string>
-    
-    <!-- SIM Switch Tile -->
+
+    <!-- Quick Settings tiles -->
     <string name="sim_switch">SIM Select</string>
+    <string name="tile_switching">Switching…</string>
+    <string name="tile_next_mode">Next: %1$s</string>
+    <string name="tile_not_loaded">Tap to load</string>
 </resources>
