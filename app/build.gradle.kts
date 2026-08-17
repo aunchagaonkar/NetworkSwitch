@@ -112,8 +112,7 @@ kotlin {
 dependencies {
 
     implementation(libs.androidx.foundation)
-    compileOnly(project(":hiddenapi"))
-    
+
     // Root & Shizuku
     implementation(libs.libsu.core)
     implementation(libs.libsu.service)
