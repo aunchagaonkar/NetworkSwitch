@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
 import android.util.Log
@@ -12,6 +14,10 @@ import com.supernova.networkswitch.domain.model.SimInfo
 import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.repository.SimRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,7 +38,39 @@ class SimRepositoryImpl @Inject constructor(
         context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
     }
 
-    override suspend fun getAvailableSimCards(): SimQueryResult {
+    override suspend fun getAvailableSimCards(): SimQueryResult = querySims()
+
+    /**
+     * The platform invokes a newly registered listener once immediately, which supplies
+     * the initial emission. Registration needs a Looper on the calling thread, so it is
+     * posted to the main thread rather than run on the collector's dispatcher.
+     */
+    override fun observeAvailableSimCards(): Flow<SimQueryResult> = callbackFlow {
+        val producer = this
+        val manager = subscriptionManager
+        if (manager == null || !hasReadPhoneStatePermission()) {
+            trySend(querySims())
+            awaitClose { }
+            return@callbackFlow
+        }
+
+        val listener = object : SubscriptionManager.OnSubscriptionsChangedListener() {
+            override fun onSubscriptionsChanged() {
+                // Reading the subscription list is a binder call, so keep it off the
+                // main thread the listener is invoked on.
+                producer.launch { trySend(querySims()) }
+            }
+        }
+
+        val handler = Handler(Looper.getMainLooper())
+        handler.post { manager.addOnSubscriptionsChangedListener(listener) }
+
+        // Removal is posted to the same Looper so it cannot overtake a registration
+        // that is still queued, which would leave the listener attached for good.
+        awaitClose { handler.post { manager.removeOnSubscriptionsChangedListener(listener) } }
+    }
+
+    private fun querySims(): SimQueryResult {
         if (!hasReadPhoneStatePermission()) {
             return SimQueryResult.PermissionDenied
         }

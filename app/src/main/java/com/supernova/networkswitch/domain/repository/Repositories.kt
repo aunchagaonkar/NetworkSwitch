@@ -96,4 +96,11 @@ interface SimRepository {
      * cannot be determined, so callers can tell that apart from a device with no SIMs.
      */
     suspend fun getAvailableSimCards(): SimQueryResult
+
+    /**
+     * Emits the current SIM set, then again whenever the device's subscriptions change.
+     *
+     * Emits once on collection so a collector needs no separate initial query.
+     */
+    fun observeAvailableSimCards(): Flow<SimQueryResult>
 }

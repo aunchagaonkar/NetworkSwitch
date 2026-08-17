@@ -2,12 +2,14 @@ package com.supernova.networkswitch.service
 
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import android.util.Log
 import com.supernova.networkswitch.domain.model.SimInfo
 import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.repository.SimRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -33,19 +35,21 @@ class SimSwitchTileService : TileService() {
         listeningJob?.cancel()
         listeningJob = serviceScope.launch {
             try {
-                simQuery = querySims()
-
-                // Then observe the selected subscription ID and update tile
-                preferencesRepository.observeSelectedSubscriptionId().collect { subId ->
-                    selectedSubId = subId
-                    withContext(Dispatchers.Main) {
-                        refreshTileDisplay()
+                combine(
+                    simRepository.observeAvailableSimCards(),
+                    preferencesRepository.observeSelectedSubscriptionId()
+                ) { query, subId -> query to subId }
+                    .collect { (query, subId) ->
+                        simQuery = query
+                        selectedSubId = subId
+                        withContext(Dispatchers.Main) {
+                            refreshTileDisplay()
+                        }
                     }
-                }
             } catch (_: CancellationException) {
-                // Expected when job is cancelled
-            } catch (_: Exception) {
-                // Handle errors silently
+                // Expected when the tile stops listening
+            } catch (e: Exception) {
+                Log.e(TAG, "SIM tile: failed to observe SIM state", e)
             }
         }
     }
@@ -61,7 +65,11 @@ class SimSwitchTileService : TileService() {
 
         serviceScope.launch {
             try {
-                simQuery = querySims()
+                // A click can land before the observer's first emission, so make sure
+                // the SIM set is known rather than treating "not yet loaded" as "none".
+                if (availableSims.isEmpty()) {
+                    simQuery = simRepository.getAvailableSimCards()
+                }
 
                 // Cannot cycle without a known SIM set, or with a single SIM
                 if (simQuery !is SimQueryResult.Loaded || availableSims.size <= 1) {
@@ -82,9 +90,9 @@ class SimSwitchTileService : TileService() {
                     refreshTileDisplay()
                 }
             } catch (_: CancellationException) {
-                // Expected when job is cancelled
-            } catch (_: Exception) {
-                // Handle errors silently
+                // Expected when the tile stops listening
+            } catch (e: Exception) {
+                Log.e(TAG, "SIM tile: failed to cycle SIM", e)
             }
         }
     }
@@ -164,19 +172,17 @@ class SimSwitchTileService : TileService() {
             }
 
             tile.updateTile()
-        } catch (_: Exception) {
-            // Handle tile update errors silently
+        } catch (e: Exception) {
+            Log.e(TAG, "SIM tile: failed to update tile", e)
         }
-    }
-
-    private suspend fun querySims(): SimQueryResult = try {
-        simRepository.getAvailableSimCards()
-    } catch (e: Exception) {
-        SimQueryResult.Failed(e)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
+    }
+
+    private companion object {
+        const val TAG = "NetworkSwitch"
     }
 }
