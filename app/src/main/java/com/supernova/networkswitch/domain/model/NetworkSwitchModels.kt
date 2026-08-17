@@ -100,6 +100,20 @@ data class SimInfo(
 )
 
 /**
+ * Values for the stored SIM selection.
+ */
+object SubscriptionSelection {
+    /**
+     * Follow the system default data subscription instead of a fixed SIM.
+     *
+     * Equal to `SubscriptionManager.INVALID_SUBSCRIPTION_ID`, so a subscription ID read
+     * back from the platform can never be distinguished from this. Only compare against
+     * it for a value that came from the stored selection.
+     */
+    const val AUTO = -1
+}
+
+/**
  * Outcome of querying the device for SIM cards.
  *
  * [Loaded] is the only outcome that reports the true set of SIMs. The others mean the

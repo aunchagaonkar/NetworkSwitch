@@ -5,6 +5,7 @@ import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.SimInfo
 import com.supernova.networkswitch.domain.model.SimQueryResult
+import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import kotlinx.coroutines.flow.Flow
 
@@ -69,13 +70,13 @@ interface PreferencesRepository {
     
     /**
      * Get the selected subscription ID for the SIM card
-     * Returns -1 if no specific SIM is selected (use default)
+     * Returns [SubscriptionSelection.AUTO] if no specific SIM is selected
      */
     suspend fun getSelectedSubscriptionId(): Int
     
     /**
      * Set the selected subscription ID for the SIM card
-     * Pass -1 to use the default subscription
+     * Pass [SubscriptionSelection.AUTO] to use the default subscription
      */
     suspend fun setSelectedSubscriptionId(subscriptionId: Int)
     

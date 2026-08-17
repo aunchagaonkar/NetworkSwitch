@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import com.supernova.networkswitch.domain.model.ControlMethod
+import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import kotlinx.coroutines.flow.Flow
@@ -33,8 +34,7 @@ class PreferencesDataSource @Inject constructor(
         private val DEFAULT_MODE_B = NetworkMode.NR_ONLY
         private const val DEFAULT_NEXT_IS_B = true
         
-        // -1 indicates no specific SIM selected (use default)
-        private const val DEFAULT_SUBSCRIPTION_ID = -1
+        private const val DEFAULT_SUBSCRIPTION_ID = SubscriptionSelection.AUTO
     }
     
     private fun parseControlMethod(methodString: String?): ControlMethod {
@@ -99,7 +99,7 @@ class PreferencesDataSource @Inject constructor(
     
     /**
      * Get the selected subscription ID for the SIM card
-     * Returns -1 if no specific SIM is selected (use default)
+     * Returns [SubscriptionSelection.AUTO] if no specific SIM is selected
      */
     suspend fun getSelectedSubscriptionId(): Int {
         return dataStore.data.map { preferences ->
@@ -109,7 +109,7 @@ class PreferencesDataSource @Inject constructor(
     
     /**
      * Set the selected subscription ID for the SIM card
-     * Pass -1 to use the default subscription
+     * Pass [SubscriptionSelection.AUTO] to use the default subscription
      */
     suspend fun setSelectedSubscriptionId(subscriptionId: Int) {
         dataStore.edit { preferences ->

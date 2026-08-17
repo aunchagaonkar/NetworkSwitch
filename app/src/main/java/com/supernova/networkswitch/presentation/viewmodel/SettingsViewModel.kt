@@ -9,6 +9,7 @@ import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.SimInfo
 import com.supernova.networkswitch.domain.model.SimQueryResult
+import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.usecase.GetAvailableSimsUseCase
@@ -61,7 +62,7 @@ class SettingsViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
-            initialValue = -1 // Default: use system default
+            initialValue = SubscriptionSelection.AUTO
         )
     
     // Loading state for SIM detection
@@ -142,8 +143,7 @@ class SettingsViewModel @Inject constructor(
     private suspend fun validateSelectedSim(availableSims: List<SimInfo>) {
         val currentSelection = selectedSubscriptionId.value
         
-        // Skip validation if Auto mode (-1) or if no selection
-        if (currentSelection == -1) return
+        if (currentSelection == SubscriptionSelection.AUTO) return
         
         // Check if the selected SIM is still in the available list
         val isStillAvailable = availableSims.any { it.subscriptionId == currentSelection }
@@ -151,7 +151,7 @@ class SettingsViewModel @Inject constructor(
         if (!isStillAvailable) {
             // Selected SIM was removed, reset to Auto mode
             try {
-                setSelectedSubscriptionIdUseCase(-1)
+                setSelectedSubscriptionIdUseCase(SubscriptionSelection.AUTO)
                 _simError.value = "Previously selected SIM was removed. Switched to Auto mode."
             } catch (e: Exception) {
                 _simError.value = "Failed to update SIM selection"
@@ -168,7 +168,7 @@ class SettingsViewModel @Inject constructor(
     private fun observeSelectedSimValidity() {
         viewModelScope.launch {
             selectedSubscriptionId.collectLatest { subId ->
-                if (subId != -1 && _availableSims.value.isNotEmpty()) {
+                if (subId != SubscriptionSelection.AUTO && _availableSims.value.isNotEmpty()) {
                     val isValid = _availableSims.value.any { it.subscriptionId == subId }
                     if (!isValid) {
                         simValidationMutex.lock()
@@ -193,13 +193,13 @@ class SettingsViewModel @Inject constructor(
     
     /**
      * Select a specific SIM card for network operations
-     * @param subscriptionId The subscription ID of the SIM to select, or -1 for default
+     * @param subscriptionId The subscription ID of the SIM to select, or [SubscriptionSelection.AUTO]
      */
     fun selectSim(subscriptionId: Int) {
         viewModelScope.launch {
             try {
                 // Validate the selection before saving
-                if (subscriptionId != -1) {
+                if (subscriptionId != SubscriptionSelection.AUTO) {
                     val isValid = _availableSims.value.any { it.subscriptionId == subscriptionId }
                     if (!isValid) {
                         _simError.value = "Selected SIM is not available"
@@ -228,7 +228,7 @@ class SettingsViewModel @Inject constructor(
      */
     fun getSelectedSimInfo(): SimInfo? {
         val currentSubscriptionId = selectedSubscriptionId.value
-        if (currentSubscriptionId == -1) {
+        if (currentSubscriptionId == SubscriptionSelection.AUTO) {
             return null // No specific SIM selected
         }
         return _availableSims.value.find { it.subscriptionId == currentSubscriptionId }

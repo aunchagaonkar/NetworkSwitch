@@ -6,6 +6,7 @@ import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.SimInfo
 import com.supernova.networkswitch.domain.model.SimQueryResult
+import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
@@ -147,8 +148,7 @@ class GetEffectiveSubscriptionIdUseCase @Inject constructor(
     suspend operator fun invoke(): Int {
         val selectedSubId = preferencesRepository.getSelectedSubscriptionId()
 
-        // If Auto mode (-1), use system default
-        if (selectedSubId == -1) {
+        if (selectedSubId == SubscriptionSelection.AUTO) {
             return SubscriptionManager.getDefaultDataSubscriptionId()
         }
 
@@ -170,7 +170,7 @@ class GetEffectiveSubscriptionIdUseCase @Inject constructor(
             selectedSubId
         } else {
             try {
-                preferencesRepository.setSelectedSubscriptionId(-1)
+                preferencesRepository.setSelectedSubscriptionId(SubscriptionSelection.AUTO)
             } catch (e: Exception) {
                 // Selection could not be reset; the default is still the safe target.
             }

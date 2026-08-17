@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
+import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.presentation.theme.NetworkSwitchTheme
 import com.supernova.networkswitch.presentation.viewmodel.SettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -647,11 +648,11 @@ private fun SimSelectionCard(
                                 }
                             },
                             onClick = {
-                                onSimSelected(-1)
+                                onSimSelected(SubscriptionSelection.AUTO)
                                 expanded = false
                             },
                             leadingIcon = {
-                                if (selectedSubscriptionId == -1) {
+                                if (selectedSubscriptionId == SubscriptionSelection.AUTO) {
                                     Icon(
                                         imageVector = Icons.Default.CheckCircle,
                                         contentDescription = "Selected",
@@ -706,7 +707,7 @@ private fun getSelectedSimDisplayName(
     availableSims: List<com.supernova.networkswitch.domain.model.SimInfo>,
     selectedSubscriptionId: Int
 ): String {
-    if (selectedSubscriptionId == -1) {
+    if (selectedSubscriptionId == SubscriptionSelection.AUTO) {
         return "Auto (System Default)"
     }
     return availableSims.find { it.subscriptionId == selectedSubscriptionId }?.displayName

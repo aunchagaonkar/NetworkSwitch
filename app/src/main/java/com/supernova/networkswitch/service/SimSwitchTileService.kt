@@ -5,6 +5,7 @@ import android.service.quicksettings.TileService
 import android.util.Log
 import com.supernova.networkswitch.domain.model.SimInfo
 import com.supernova.networkswitch.domain.model.SimQueryResult
+import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.repository.SimRepository
 import dagger.hilt.android.AndroidEntryPoint
@@ -25,7 +26,7 @@ class SimSwitchTileService : TileService() {
     private var listeningJob: Job? = null
 
     private var simQuery: SimQueryResult = SimQueryResult.Loaded(emptyList())
-    private var selectedSubId: Int = -1
+    private var selectedSubId: Int = SubscriptionSelection.AUTO
 
     private val availableSims: List<SimInfo>
         get() = (simQuery as? SimQueryResult.Loaded)?.sims ?: emptyList()
@@ -99,12 +100,12 @@ class SimSwitchTileService : TileService() {
 
     /**
      * Determine the next subscription ID in the cycle.
-     * Order: Auto (-1) → SIM 1 → SIM 2 → ... → Auto (-1)
+     * Order: Auto → SIM 1 → SIM 2 → ... → Auto
      */
     private fun getNextSubscriptionId(currentSubId: Int): Int {
-        if (availableSims.isEmpty()) return -1
+        if (availableSims.isEmpty()) return SubscriptionSelection.AUTO
 
-        if (currentSubId == -1) {
+        if (currentSubId == SubscriptionSelection.AUTO) {
             // Currently on Auto, switch to first SIM
             return availableSims.first().subscriptionId
         }
@@ -114,7 +115,7 @@ class SimSwitchTileService : TileService() {
 
         return if (currentIndex == -1 || currentIndex >= availableSims.size - 1) {
             // Current SIM not found or is the last one, cycle back to Auto
-            -1
+            SubscriptionSelection.AUTO
         } else {
             // Move to next SIM
             availableSims[currentIndex + 1].subscriptionId
@@ -156,7 +157,7 @@ class SimSwitchTileService : TileService() {
             // Multiple SIMs available — tile is active
             tile.state = Tile.STATE_ACTIVE
 
-            if (selectedSubId == -1) {
+            if (selectedSubId == SubscriptionSelection.AUTO) {
                 tile.label = "SIM: Auto"
                 tile.subtitle = "System default"
             } else {
