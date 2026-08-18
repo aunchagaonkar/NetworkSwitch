@@ -42,8 +42,7 @@ class SimRepositoryImpl @Inject constructor(
 
     /**
      * The platform invokes a newly registered listener once immediately, which supplies
-     * the initial emission. Registration needs a Looper on the calling thread, so it is
-     * posted to the main thread rather than run on the collector's dispatcher.
+     * the initial emission.
      */
     override fun observeAvailableSimCards(): Flow<SimQueryResult> = callbackFlow {
         val producer = this
@@ -63,10 +62,16 @@ class SimRepositoryImpl @Inject constructor(
         }
 
         val handler = Handler(Looper.getMainLooper())
-        handler.post { manager.addOnSubscriptionsChangedListener(listener) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            manager.addOnSubscriptionsChangedListener(context.mainExecutor, listener)
+        } else {
+            // The executor-less overload registers against the calling thread's Looper.
+            @Suppress("DEPRECATION")
+            handler.post { manager.addOnSubscriptionsChangedListener(listener) }
+        }
 
-        // Removal is posted to the same Looper so it cannot overtake a registration
-        // that is still queued, which would leave the listener attached for good.
+        // Posted to the same Looper as the pre-R registration so removal cannot overtake
+        // a registration still queued on it, which would leave the listener attached.
         awaitClose { handler.post { manager.removeOnSubscriptionsChangedListener(listener) } }
     }
 
@@ -79,11 +84,7 @@ class SimRepositoryImpl @Inject constructor(
             ?: return SimQueryResult.Failed(IllegalStateException("SubscriptionManager unavailable"))
 
         return try {
-            val subscriptions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-                manager.activeSubscriptionInfoList ?: emptyList()
-            } else {
-                emptyList()
-            }
+            val subscriptions = manager.activeSubscriptionInfoList ?: emptyList()
 
             SimQueryResult.Loaded(
                 subscriptions
@@ -99,9 +100,6 @@ class SimRepositoryImpl @Inject constructor(
         }
     }
 
-    /**
-     * Check if READ_PHONE_STATE permission is granted
-     */
     private fun hasReadPhoneStatePermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
@@ -110,48 +108,39 @@ class SimRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Map SubscriptionInfo to SimInfo domain model
+     * Map SubscriptionInfo to SimInfo domain model.
+     *
+     * Returns null for a subscription the platform cannot describe, so one unusable
+     * entry does not discard the rest of the list.
      */
     private fun mapToSimInfo(subscriptionInfo: SubscriptionInfo): SimInfo? {
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-                val displayName = buildDisplayName(subscriptionInfo)
-                
-                SimInfo(
-                    subscriptionId = subscriptionInfo.subscriptionId,
-                    simSlotIndex = subscriptionInfo.simSlotIndex,
-                    displayName = displayName
-                )
-            } else {
-                null
-            }
+            SimInfo(
+                subscriptionId = subscriptionInfo.subscriptionId,
+                simSlotIndex = subscriptionInfo.simSlotIndex,
+                displayName = buildDisplayName(subscriptionInfo)
+            )
         } catch (e: Exception) {
+            Log.w(TAG, "Skipping unreadable subscription", e)
             null
         }
     }
 
     /**
-     * Build a user-friendly display name for the SIM card
+     * Build a user-friendly display name for the SIM card.
+     *
+     * A slot index is negative for a subscription that is not tied to a physical slot,
+     * such as an inactive eSIM profile.
      */
     private fun buildDisplayName(subscriptionInfo: SubscriptionInfo): String {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-            // Try to get the display name from the subscription
-            val carrierName = subscriptionInfo.displayName?.toString()
-            val slotIndex = subscriptionInfo.simSlotIndex
+        val carrierName = subscriptionInfo.displayName?.toString()
+        val slotIndex = subscriptionInfo.simSlotIndex
 
-            return when {
-                // If carrier name exists and slot index is valid
-                !carrierName.isNullOrBlank() && slotIndex >= 0 -> {
-                    "$carrierName (Slot ${slotIndex + 1})"
-                }
-                // If only carrier name exists
-                !carrierName.isNullOrBlank() -> carrierName
-                // If only slot index is valid
-                slotIndex >= 0 -> "SIM ${slotIndex + 1}"
-                // Fallback
-                else -> "SIM ${subscriptionInfo.subscriptionId}"
-            }
+        return when {
+            !carrierName.isNullOrBlank() && slotIndex >= 0 -> "$carrierName (Slot ${slotIndex + 1})"
+            !carrierName.isNullOrBlank() -> carrierName
+            slotIndex >= 0 -> "SIM ${slotIndex + 1}"
+            else -> "SIM ${subscriptionInfo.subscriptionId}"
         }
-        return "Unknown SIM"
     }
 }
