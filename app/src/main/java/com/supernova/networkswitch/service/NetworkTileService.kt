@@ -2,13 +2,13 @@ package com.supernova.networkswitch.service
 
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import android.telephony.SubscriptionManager
 import android.util.Log
 import com.supernova.networkswitch.R
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
+import com.supernova.networkswitch.domain.usecase.GetEffectiveSubscriptionIdUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +26,9 @@ class NetworkTileService : TileService() {
     @Inject
     lateinit var getCurrentNetworkModeUseCase: GetCurrentNetworkModeUseCase
 
+    @Inject
+    lateinit var getEffectiveSubscriptionIdUseCase: GetEffectiveSubscriptionIdUseCase
+    
     @Inject
     lateinit var toggleNetworkModeUseCase: ToggleNetworkModeUseCase
 
@@ -74,12 +77,11 @@ class NetworkTileService : TileService() {
     }
 
     private fun performToggle() {
-        val subId = SubscriptionManager.getDefaultDataSubscriptionId()
-
         serviceScope.launch {
             try {
                 // The binder call into the root/Shizuku process can hang indefinitely.
                 withTimeout(TOGGLE_TIMEOUT_MS) {
+                    val subId = getEffectiveSubscriptionIdUseCase()
                     toggleNetworkModeUseCase(subId)
                         .onSuccess { newMode -> currentNetworkMode = newMode }
                         .onFailure { e -> Log.e(TAG, "Tile: Toggle failed", e) }
@@ -93,9 +95,10 @@ class NetworkTileService : TileService() {
     }
 
     private suspend fun refreshNetworkState() {
-        val subId = SubscriptionManager.getDefaultDataSubscriptionId()
-
         try {
+            // Use the user's selected subscription ID (or default if "Auto" selected)
+            val subId = getEffectiveSubscriptionIdUseCase()
+            
             getCurrentNetworkModeUseCase(subId)
                 .onSuccess { networkMode -> currentNetworkMode = networkMode }
                 .onFailure { e -> Log.e(TAG, "Tile: Failed to read network mode", e) }

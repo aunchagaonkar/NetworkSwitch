@@ -21,10 +21,8 @@ class NetworkControlRepositoryImpl @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) : NetworkControlRepository {
     
-    override suspend fun checkCompatibility(method: ControlMethod): CompatibilityState {
-        val dataSource = getDataSource(method)
-        val subId = android.telephony.SubscriptionManager.getDefaultDataSubscriptionId()
-        return dataSource.checkCompatibility(subId)
+    override suspend fun checkCompatibility(method: ControlMethod, subId: Int): CompatibilityState {
+        return getDataSource(method).checkCompatibility(subId)
     }
 
     override suspend fun getCurrentNetworkMode(subId: Int): NetworkMode? {
@@ -55,7 +53,7 @@ class NetworkControlRepositoryImpl @Inject constructor(
         rootDataSource.resetConnection()
         shizukuDataSource.resetConnection()
     }
-
+    
     private fun getDataSource(method: ControlMethod): NetworkControlDataSource {
         return when (method) {
             ControlMethod.ROOT -> rootDataSource

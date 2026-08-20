@@ -10,8 +10,17 @@
     <string name="save_configuration">Save Configuration</string>
     <string name="configuration_saved">Configuration saved successfully</string>
 
-    <!-- Quick Settings tile -->
+    <!-- Quick Settings tiles -->
+    <string name="sim_switch">SIM Select</string>
     <string name="tile_switching">Switching…</string>
     <string name="tile_next_mode">Next: %1$s</string>
     <string name="tile_not_loaded">Tap to load</string>
+    <string name="sim_tile_permission_needed">Permission needed</string>
+    <string name="sim_tile_unavailable">Unavailable</string>
+    <string name="sim_tile_no_sim">No SIM detected</string>
+    <string name="sim_tile_auto">SIM: Auto</string>
+    <string name="sim_tile_auto_subtitle">System default</string>
+    <string name="sim_tile_selected">SIM: %1$s</string>
+    <string name="sim_tile_tap_to_switch">Tap to switch</string>
+    <string name="sim_tile_previous_removed">Previous SIM removed</string>
 </resources>

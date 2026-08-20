@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import com.supernova.networkswitch.domain.model.ControlMethod
+import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import kotlinx.coroutines.flow.Flow
@@ -25,12 +26,15 @@ class PreferencesDataSource @Inject constructor(
         private val TOGGLE_MODE_A_KEY = intPreferencesKey("toggle_mode_a")
         private val TOGGLE_MODE_B_KEY = intPreferencesKey("toggle_mode_b")
         private val TOGGLE_NEXT_IS_B_KEY = booleanPreferencesKey("toggle_next_is_b")
+        private val SELECTED_SUBSCRIPTION_ID_KEY = intPreferencesKey("selected_subscription_id")
         
         private const val DEFAULT_CONTROL_METHOD = "SHIZUKU"
         
         private val DEFAULT_MODE_A = NetworkMode.LTE_ONLY
         private val DEFAULT_MODE_B = NetworkMode.NR_ONLY
         private const val DEFAULT_NEXT_IS_B = true
+        
+        private const val DEFAULT_SUBSCRIPTION_ID = SubscriptionSelection.AUTO
     }
     
     private fun parseControlMethod(methodString: String?): ControlMethod {
@@ -90,6 +94,35 @@ class PreferencesDataSource @Inject constructor(
             val modeB = NetworkMode.fromValue(modeBValue) ?: DEFAULT_MODE_B
             
             ToggleModeConfig(modeA, modeB, nextIsB)
+        }
+    }
+    
+    /**
+     * Get the selected subscription ID for the SIM card
+     * Returns [SubscriptionSelection.AUTO] if no specific SIM is selected
+     */
+    suspend fun getSelectedSubscriptionId(): Int {
+        return dataStore.data.map { preferences ->
+            preferences[SELECTED_SUBSCRIPTION_ID_KEY] ?: DEFAULT_SUBSCRIPTION_ID
+        }.first()
+    }
+    
+    /**
+     * Set the selected subscription ID for the SIM card
+     * Pass [SubscriptionSelection.AUTO] to use the default subscription
+     */
+    suspend fun setSelectedSubscriptionId(subscriptionId: Int) {
+        dataStore.edit { preferences ->
+            preferences[SELECTED_SUBSCRIPTION_ID_KEY] = subscriptionId
+        }
+    }
+    
+    /**
+     * Observe changes to the selected subscription ID
+     */
+    fun observeSelectedSubscriptionId(): Flow<Int> {
+        return dataStore.data.map { preferences ->
+            preferences[SELECTED_SUBSCRIPTION_ID_KEY] ?: DEFAULT_SUBSCRIPTION_ID
         }
     }
 }
