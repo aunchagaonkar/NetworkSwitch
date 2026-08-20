@@ -3,6 +3,7 @@ package com.supernova.networkswitch.service
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
+import com.supernova.networkswitch.R
 import com.supernova.networkswitch.domain.model.SimInfo
 import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.model.SubscriptionSelection
@@ -128,27 +129,27 @@ class SimSwitchTileService : TileService() {
 
             if (simQuery is SimQueryResult.PermissionDenied) {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = "SIM Select"
-                tile.subtitle = "Permission needed"
+                tile.label = getString(R.string.sim_switch)
+                tile.subtitle = getString(R.string.sim_tile_permission_needed)
                 tile.updateTile()
                 return
             }
 
             if (simQuery is SimQueryResult.Failed) {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = "SIM Select"
-                tile.subtitle = "Unavailable"
+                tile.label = getString(R.string.sim_switch)
+                tile.subtitle = getString(R.string.sim_tile_unavailable)
                 tile.updateTile()
                 return
             }
 
             if (availableSims.size <= 1) {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = "SIM Select"
+                tile.label = getString(R.string.sim_switch)
                 tile.subtitle = if (availableSims.size == 1) {
                     availableSims.first().displayName
                 } else {
-                    "No SIM detected"
+                    getString(R.string.sim_tile_no_sim)
                 }
                 tile.updateTile()
                 return
@@ -158,17 +159,17 @@ class SimSwitchTileService : TileService() {
             tile.state = Tile.STATE_ACTIVE
 
             if (selectedSubId == SubscriptionSelection.AUTO) {
-                tile.label = "SIM: Auto"
-                tile.subtitle = "System default"
+                tile.label = getString(R.string.sim_tile_auto)
+                tile.subtitle = getString(R.string.sim_tile_auto_subtitle)
             } else {
                 val simInfo = availableSims.find { it.subscriptionId == selectedSubId }
                 if (simInfo != null) {
-                    tile.label = "SIM: ${simInfo.displayName}"
-                    tile.subtitle = "Tap to switch"
+                    tile.label = getString(R.string.sim_tile_selected, simInfo.displayName)
+                    tile.subtitle = getString(R.string.sim_tile_tap_to_switch)
                 } else {
                     // Selected SIM no longer available
-                    tile.label = "SIM: Auto"
-                    tile.subtitle = "Previous SIM removed"
+                    tile.label = getString(R.string.sim_tile_auto)
+                    tile.subtitle = getString(R.string.sim_tile_previous_removed)
                 }
             }
 
