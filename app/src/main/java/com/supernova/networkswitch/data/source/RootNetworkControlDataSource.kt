@@ -27,10 +27,16 @@ class RootNetworkControlDataSource @Inject constructor(
     private var isServiceConnected = false
 
     override suspend fun checkCompatibility(subId: Int): CompatibilityState {
-        return if (!Utils.isRootGranted()) {
-            CompatibilityState.PermissionDenied(com.supernova.networkswitch.domain.model.ControlMethod.ROOT)
-        } else {
+        if (!Utils.isRootGranted()) {
+            return CompatibilityState.PermissionDenied(com.supernova.networkswitch.domain.model.ControlMethod.ROOT)
+        }
+
+        // Root access alone does not mean the root service is bound, and reads go
+        // through that binding.
+        return if (getNetworkController() != null) {
             CompatibilityState.Compatible
+        } else {
+            CompatibilityState.Incompatible("Root service unavailable")
         }
     }
 

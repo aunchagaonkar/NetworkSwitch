@@ -16,6 +16,7 @@ import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.UpdateControlMethodUseCase
 import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
@@ -51,11 +52,12 @@ class MainViewModel @Inject constructor(
     var compatibilityState by mutableStateOf<CompatibilityState>(CompatibilityState.Pending)
         private set
 
+    private var refreshJob: Job? = null
+
     init {
         observeControlMethodPreference()
         loadToggleModeConfig()
-        checkCompatibility()
-        refreshNetworkState()
+        refresh()
     }
     
     /**
@@ -66,9 +68,8 @@ class MainViewModel @Inject constructor(
             preferencesRepository.observeControlMethod().collectLatest { preferredMethod ->
                 if (selectedMethod != preferredMethod) {
                     selectedMethod = preferredMethod
-                    checkCompatibility()
                     loadToggleModeConfig()
-                    refreshNetworkState()
+                    refresh()
                 }
             }
         }
@@ -77,20 +78,31 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesRepository.observeToggleModeConfig().collectLatest { newConfig ->
                 toggleModeConfig = newConfig
-                // Force UI update when config changes
-                refreshNetworkState()
             }
         }
     }
     
     /**
-     * Check compatibility using domain use case
+     * Re-read compatibility and, if the control method works, the current network mode.
+     *
+     * Both values are refreshed in one coroutine because the mode read is only
+     * meaningful once compatibility is confirmed. Every caller goes through here so the
+     * two cannot be updated independently and disagree. A refresh already in flight is
+     * cancelled, so the newest request wins.
      */
-    private fun checkCompatibility() {
-        viewModelScope.launch {
+    private fun refresh() {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             compatibilityState = CompatibilityState.Pending
-            compatibilityState = checkCompatibilityUseCase()
+            val state = checkCompatibilityUseCase()
+            compatibilityState = state
+            currentNetworkMode = if (state is CompatibilityState.Compatible) readCurrentMode() else null
         }
+    }
+
+    private suspend fun readCurrentMode(): NetworkMode? {
+        val subId = getEffectiveSubscriptionIdUseCase()
+        return getCurrentNetworkModeUseCase(subId).getOrNull()
     }
     
     /**
@@ -106,15 +118,14 @@ class MainViewModel @Inject constructor(
      * Retry compatibility check
      */
     fun retryCompatibilityCheck() {
-        checkCompatibility()
+        refresh()
     }
     
     /**
      * Refresh all data when app resumes
      */
     fun refreshAllData() {
-        checkCompatibility()
-        refreshNetworkState()
+        refresh()
     }
     
     /**
@@ -147,8 +158,8 @@ class MainViewModel @Inject constructor(
                     currentNetworkMode = newMode
                 }
                 .onFailure {
-                    // On failure, refresh state to get current status
-                    refreshNetworkState()
+                    // The mode may or may not have changed; re-read rather than guess.
+                    refresh()
                 }
             
             isLoading = false
@@ -163,21 +174,4 @@ class MainViewModel @Inject constructor(
         return "Switch to ${nextMode.displayName}"
     }
     
-    /**
-     * Refresh current network state
-     */
-    private fun refreshNetworkState() {
-        viewModelScope.launch {
-            // Use the user's selected subscription ID (or default if "Auto" selected)
-            val subId = getEffectiveSubscriptionIdUseCase()
-            
-            getCurrentNetworkModeUseCase(subId)
-                .onSuccess { mode ->
-                    currentNetworkMode = mode
-                }
-                .onFailure {
-                    currentNetworkMode = null
-                }
-        }
-    }
 }

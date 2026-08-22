@@ -36,6 +36,8 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
         return try {
             // Check if Shizuku service is running
             if (!Shizuku.pingBinder()) {
+                // Any cached binder belongs to the process that just went away.
+                resetConnection()
                 return CompatibilityState.Incompatible("Shizuku service not running")
             }
             
@@ -49,8 +51,13 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
             if (permission != PackageManager.PERMISSION_GRANTED) {
                 return CompatibilityState.PermissionDenied(com.supernova.networkswitch.domain.model.ControlMethod.SHIZUKU)
             }
-            
-            // Both service and permission checks passed
+
+            // A reachable Shizuku with permission still does not mean the user service
+            // is bound, and reads go through that binding.
+            if (!ensureServiceBinding()) {
+                return CompatibilityState.Incompatible("Shizuku user service unavailable")
+            }
+
             CompatibilityState.Compatible
         } catch (e: Exception) {
             CompatibilityState.Incompatible("Shizuku not available: ${e.message}")
@@ -90,18 +97,6 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
     }
 
     /**
-     * Simple permission and service check without delays or complex logic
-     */
-    private fun hasPermissionAndService(): Boolean {
-        return try {
-            // Only check if service is already connected, don't call Shizuku APIs that might block
-            userService != null && _isConnected.value
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    /**
      * Ensure service binding for actual operations (not compatibility checks)
      */
     private suspend fun ensureServiceBinding(): Boolean {
@@ -110,10 +105,13 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
             return false
         }
         
-        // If service is already connected, return true
-        if (userService != null && _isConnected.value) {
+        // onServiceDisconnected is not guaranteed to have run yet, so trust the binder
+        // itself rather than the connected flag.
+        val cached = userService
+        if (cached != null && _isConnected.value && cached.asBinder()?.pingBinder() == true) {
             return true
         }
+        resetConnection()
         
         // Bind service asynchronously with timeout
         return try {
