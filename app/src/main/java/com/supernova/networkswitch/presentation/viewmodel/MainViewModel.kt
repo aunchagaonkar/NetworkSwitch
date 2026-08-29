@@ -10,11 +10,13 @@ import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
+import com.supernova.networkswitch.domain.model.NetworkStats
 import com.supernova.networkswitch.domain.usecase.CheckCompatibilityUseCase
 import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.UpdateControlMethodUseCase
 import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
+import com.supernova.networkswitch.domain.usecase.ObserveNetworkStatsUseCase
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
@@ -28,6 +30,7 @@ class MainViewModel @Inject constructor(
     private val toggleNetworkModeUseCase: ToggleNetworkModeUseCase,
     private val updateControlMethodUseCase: UpdateControlMethodUseCase,
     private val getToggleModeConfigUseCase: GetToggleModeConfigUseCase,
+    private val observeNetworkStatsUseCase: ObserveNetworkStatsUseCase,
     private val preferencesRepository: PreferencesRepository
 ) : ViewModel() {
     
@@ -50,11 +53,27 @@ class MainViewModel @Inject constructor(
     var compatibilityState by mutableStateOf<CompatibilityState>(CompatibilityState.Pending)
         private set
 
+    // Real-time network performance metrics
+    var networkStats by mutableStateOf(NetworkStats())
+        private set
+
     init {
         observeControlMethodPreference()
         loadToggleModeConfig()
         checkCompatibility()
         refreshNetworkState()
+        observeNetworkStats()
+    }
+
+    /**
+     * Observe real-time network statistics
+     */
+    private fun observeNetworkStats() {
+        viewModelScope.launch {
+            observeNetworkStatsUseCase().collectLatest { stats ->
+                networkStats = stats
+            }
+        }
     }
     
     /**

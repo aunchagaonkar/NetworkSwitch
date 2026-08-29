@@ -92,3 +92,14 @@ class UpdateToggleModeConfigUseCase @Inject constructor(
         preferencesRepository.setToggleModeConfig(config)
     }
 }
+
+/**
+ * Use case for observing real-time network statistics
+ */
+class ObserveNetworkStatsUseCase @Inject constructor(
+    private val networkStatsRepository: com.supernova.networkswitch.domain.repository.NetworkStatsRepository
+) {
+    operator fun invoke(): kotlinx.coroutines.flow.Flow<com.supernova.networkswitch.domain.model.NetworkStats> {
+        return networkStatsRepository.observeNetworkStats()
+    }
+}

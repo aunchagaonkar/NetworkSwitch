@@ -21,6 +21,7 @@ import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.presentation.theme.NetworkSwitchTheme
 import com.supernova.networkswitch.presentation.viewmodel.MainViewModel
 import com.supernova.networkswitch.presentation.ui.composable.CompatibilityCard
+import com.supernova.networkswitch.presentation.ui.composable.NetworkStatsCard
 import com.supernova.networkswitch.presentation.ui.composable.NetworkToggleCard
 import com.supernova.networkswitch.presentation.ui.composable.QuickSettingsHintCard
 import dagger.hilt.android.AndroidEntryPoint
@@ -107,6 +108,9 @@ private fun MainScreen(
                     isLoading = viewModel.isLoading,
                     onToggleClick = { viewModel.toggleNetworkMode() }
                 )
+                
+                // Network Stats Monitoring Card
+                NetworkStatsCard(stats = viewModel.networkStats)
             }
             
             // Quick Settings Tip Card

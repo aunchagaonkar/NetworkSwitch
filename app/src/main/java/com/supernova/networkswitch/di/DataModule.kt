@@ -37,6 +37,12 @@ abstract class DataModule {
         preferencesRepositoryImpl: PreferencesRepositoryImpl
     ): PreferencesRepository
     
+    @Binds
+    @Singleton
+    abstract fun bindNetworkStatsRepository(
+        networkStatsRepositoryImpl: com.supernova.networkswitch.data.repository.NetworkStatsRepositoryImpl
+    ): com.supernova.networkswitch.domain.repository.NetworkStatsRepository
+    
     companion object {
         @Provides
         @Singleton
