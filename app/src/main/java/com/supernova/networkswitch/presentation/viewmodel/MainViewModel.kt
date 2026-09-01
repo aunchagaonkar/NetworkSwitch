@@ -33,22 +33,18 @@ class MainViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) : ViewModel() {
     
-    // Current control method selection
     var selectedMethod by mutableStateOf(ControlMethod.SHIZUKU)
         private set
     
-    // Current network mode
     var currentNetworkMode by mutableStateOf<NetworkMode?>(null)
         private set
     
-    // Toggle mode configuration
     var toggleModeConfig by mutableStateOf(ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY))
         private set
     
     var isLoading by mutableStateOf(false)
         private set
     
-    // Compatibility state using domain model
     var compatibilityState by mutableStateOf<CompatibilityState>(CompatibilityState.Pending)
         private set
 
@@ -60,9 +56,6 @@ class MainViewModel @Inject constructor(
         refresh()
     }
     
-    /**
-     * Observe control method preference changes
-     */
     private fun observeControlMethodPreference() {
         viewModelScope.launch {
             preferencesRepository.observeControlMethod().collectLatest { preferredMethod ->
@@ -74,7 +67,6 @@ class MainViewModel @Inject constructor(
             }
         }
         
-        // Also observe toggle mode config changes
         viewModelScope.launch {
             preferencesRepository.observeToggleModeConfig().collectLatest { newConfig ->
                 toggleModeConfig = newConfig
@@ -83,12 +75,11 @@ class MainViewModel @Inject constructor(
     }
     
     /**
-     * Re-read compatibility and, if the control method works, the current network mode.
+     * Sole writer of [compatibilityState] and [currentNetworkMode].
      *
-     * Both values are refreshed in one coroutine because the mode read is only
-     * meaningful once compatibility is confirmed. Every caller goes through here so the
-     * two cannot be updated independently and disagree. A refresh already in flight is
-     * cancelled, so the newest request wins.
+     * The mode read is only meaningful once compatibility is confirmed, so both happen
+     * in one coroutine; routing every caller through here keeps the two from disagreeing.
+     * An in-flight refresh is cancelled, so the newest request wins.
      */
     private fun refresh() {
         refreshJob?.cancel()
@@ -105,52 +96,36 @@ class MainViewModel @Inject constructor(
         return getCurrentNetworkModeUseCase(subId).getOrNull()
     }
     
-    /**
-     * Switch control method
-     */
     fun switchToMethod(method: ControlMethod) {
         viewModelScope.launch {
             updateControlMethodUseCase(method)
         }
     }
     
-    /**
-     * Retry compatibility check
-     */
     fun retryCompatibilityCheck() {
         refresh()
     }
     
-    /**
-     * Refresh all data when app resumes
-     */
+    /** Called on resume; the activity has no other signal that state may be stale. */
     fun refreshAllData() {
         refresh()
     }
     
-    /**
-     * Load toggle mode configuration
-     */
     private fun loadToggleModeConfig() {
         viewModelScope.launch {
             try {
                 toggleModeConfig = getToggleModeConfigUseCase()
             } catch (e: Exception) {
-                // Use default configuration if loading fails
                 toggleModeConfig = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY)
             }
         }
     }
     
-    /**
-     * Toggle network mode using configurable modes
-     */
     fun toggleNetworkMode() {
         if (isLoading) return
         
         isLoading = true
         viewModelScope.launch {
-            // Use the user's selected subscription ID (or default if "Auto" selected)
             val subId = getEffectiveSubscriptionIdUseCase()
             
             toggleNetworkModeUseCase(subId)
@@ -158,7 +133,6 @@ class MainViewModel @Inject constructor(
                     currentNetworkMode = newMode
                 }
                 .onFailure {
-                    // The mode may or may not have changed; re-read rather than guess.
                     refresh()
                 }
             
@@ -166,9 +140,6 @@ class MainViewModel @Inject constructor(
         }
     }
     
-    /**
-     * Get display text for current network mode and next toggle mode
-     */
     fun getToggleButtonText(): String {
         val nextMode = toggleModeConfig.getNextMode()
         return "Switch to ${nextMode.displayName}"
