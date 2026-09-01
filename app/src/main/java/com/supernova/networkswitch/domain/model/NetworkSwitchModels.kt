@@ -67,20 +67,16 @@ enum class NetworkMode(val displayName: String, val value: Int) {
  */
 data class ToggleModeConfig(
     val modeA: NetworkMode,
-    val modeB: NetworkMode,
-    val nextModeIsB: Boolean = true
+    val modeB: NetworkMode
 ) {
-    fun getNextMode(): NetworkMode {
-        return if (nextModeIsB) modeB else modeA
-    }
-    
-    fun getCurrentMode(): NetworkMode {
-        return if (nextModeIsB) modeA else modeB
-    }
-    
-    fun toggle(): ToggleModeConfig {
-        return copy(nextModeIsB = !nextModeIsB)
-    }
+    /**
+     * The mode a toggle moves to, given the mode the radio is on.
+     *
+     * [actual] is null when the mode is unreadable, and is outside this pair when the
+     * SIM was configured elsewhere. Both target [modeA].
+     */
+    fun nextAfter(actual: NetworkMode?): NetworkMode =
+        if (actual == modeA) modeB else modeA
 }
 
 sealed class CompatibilityState {

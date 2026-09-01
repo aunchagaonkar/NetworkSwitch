@@ -5,7 +5,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.model.NetworkMode
@@ -25,14 +24,12 @@ class PreferencesDataSource @Inject constructor(
         private val CONTROL_METHOD_KEY = stringPreferencesKey("control_method")
         private val TOGGLE_MODE_A_KEY = intPreferencesKey("toggle_mode_a")
         private val TOGGLE_MODE_B_KEY = intPreferencesKey("toggle_mode_b")
-        private val TOGGLE_NEXT_IS_B_KEY = booleanPreferencesKey("toggle_next_is_b")
         private val SELECTED_SUBSCRIPTION_ID_KEY = intPreferencesKey("selected_subscription_id")
         
         private const val DEFAULT_CONTROL_METHOD = "SHIZUKU"
         
         private val DEFAULT_MODE_A = NetworkMode.LTE_ONLY
         private val DEFAULT_MODE_B = NetworkMode.NR_ONLY
-        private const val DEFAULT_NEXT_IS_B = true
         
         private const val DEFAULT_SUBSCRIPTION_ID = SubscriptionSelection.AUTO
     }
@@ -67,12 +64,10 @@ class PreferencesDataSource @Inject constructor(
         return dataStore.data.map { preferences ->
             val modeAValue = preferences[TOGGLE_MODE_A_KEY] ?: DEFAULT_MODE_A.value
             val modeBValue = preferences[TOGGLE_MODE_B_KEY] ?: DEFAULT_MODE_B.value
-            val nextIsB = preferences[TOGGLE_NEXT_IS_B_KEY] ?: DEFAULT_NEXT_IS_B
-            
             val modeA = NetworkMode.fromValue(modeAValue) ?: DEFAULT_MODE_A
             val modeB = NetworkMode.fromValue(modeBValue) ?: DEFAULT_MODE_B
-            
-            ToggleModeConfig(modeA, modeB, nextIsB)
+
+            ToggleModeConfig(modeA, modeB)
         }.first()
     }
     
@@ -80,7 +75,6 @@ class PreferencesDataSource @Inject constructor(
         dataStore.edit { preferences ->
             preferences[TOGGLE_MODE_A_KEY] = config.modeA.value
             preferences[TOGGLE_MODE_B_KEY] = config.modeB.value
-            preferences[TOGGLE_NEXT_IS_B_KEY] = config.nextModeIsB
         }
     }
     
@@ -88,12 +82,10 @@ class PreferencesDataSource @Inject constructor(
         return dataStore.data.map { preferences ->
             val modeAValue = preferences[TOGGLE_MODE_A_KEY] ?: DEFAULT_MODE_A.value
             val modeBValue = preferences[TOGGLE_MODE_B_KEY] ?: DEFAULT_MODE_B.value
-            val nextIsB = preferences[TOGGLE_NEXT_IS_B_KEY] ?: DEFAULT_NEXT_IS_B
-            
             val modeA = NetworkMode.fromValue(modeAValue) ?: DEFAULT_MODE_A
             val modeB = NetworkMode.fromValue(modeBValue) ?: DEFAULT_MODE_B
-            
-            ToggleModeConfig(modeA, modeB, nextIsB)
+
+            ToggleModeConfig(modeA, modeB)
         }
     }
     

@@ -13,122 +13,104 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Unit tests for ToggleNetworkModeUseCase with alternating logic
+ * Unit tests for ToggleNetworkModeUseCase
  */
 class ToggleNetworkModeUseCaseTest {
-    
+
     private lateinit var networkControlRepository: NetworkControlRepository
     private lateinit var preferencesRepository: PreferencesRepository
     private lateinit var useCase: ToggleNetworkModeUseCase
-    
+
     private val testSubId = 1
-    
+    private val config = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY)
+
     @Before
     fun setUp() {
         networkControlRepository = mockk()
         preferencesRepository = mockk()
         useCase = ToggleNetworkModeUseCase(networkControlRepository, preferencesRepository)
-    }
-    
-    @Test
-    fun `should switch to mode B when nextModeIsB is true`() = runTest {
-        // Given
-        val config = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY, nextModeIsB = true)
         coEvery { preferencesRepository.getToggleModeConfig() } returns config
+    }
+
+    @Test
+    fun `should switch to mode B when the SIM is on mode A`() = runTest {
+        coEvery { networkControlRepository.getCurrentNetworkMode(testSubId) } returns NetworkMode.LTE_ONLY
         coEvery { networkControlRepository.setNetworkMode(testSubId, NetworkMode.NR_ONLY) } returns Result.success(Unit)
-        
-        val updatedConfig = config.toggle() // After successful switch, toggle the state
-        coEvery { preferencesRepository.setToggleModeConfig(updatedConfig) } returns Unit
-        
-        // When
+
         val result = useCase(testSubId)
-        
-        // Then
-        assertTrue(result.isSuccess)
+
         assertEquals(NetworkMode.NR_ONLY, result.getOrNull())
         coVerify { networkControlRepository.setNetworkMode(testSubId, NetworkMode.NR_ONLY) }
-        coVerify { preferencesRepository.setToggleModeConfig(updatedConfig) }
     }
-    
+
     @Test
-    fun `should switch to mode A when nextModeIsB is false`() = runTest {
-        // Given
-        val config = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY, nextModeIsB = false)
-        coEvery { preferencesRepository.getToggleModeConfig() } returns config
+    fun `should switch to mode A when the SIM is on mode B`() = runTest {
+        coEvery { networkControlRepository.getCurrentNetworkMode(testSubId) } returns NetworkMode.NR_ONLY
         coEvery { networkControlRepository.setNetworkMode(testSubId, NetworkMode.LTE_ONLY) } returns Result.success(Unit)
-        
-        val updatedConfig = config.toggle() // After successful switch, toggle the state
-        coEvery { preferencesRepository.setToggleModeConfig(updatedConfig) } returns Unit
-        
-        // When
+
         val result = useCase(testSubId)
-        
-        // Then
-        assertTrue(result.isSuccess)
+
         assertEquals(NetworkMode.LTE_ONLY, result.getOrNull())
         coVerify { networkControlRepository.setNetworkMode(testSubId, NetworkMode.LTE_ONLY) }
-        coVerify { preferencesRepository.setToggleModeConfig(updatedConfig) }
     }
-    
+
+    /** A SIM already on mode B must not be told to switch to mode B. */
     @Test
-    fun `should handle alternating sequence correctly`() = runTest {
-        // Given
-        val initialConfig = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY, nextModeIsB = true)
-        coEvery { preferencesRepository.getToggleModeConfig() } returns initialConfig
-        
-        // First call should switch to NR_ONLY
-        coEvery { networkControlRepository.setNetworkMode(testSubId, NetworkMode.NR_ONLY) } returns Result.success(Unit)
-        val afterFirstToggle = initialConfig.toggle()
-        coEvery { preferencesRepository.setToggleModeConfig(afterFirstToggle) } returns Unit
-        
-        // When
-        val firstResult = useCase(testSubId)
-        
-        // Then
-        assertTrue(firstResult.isSuccess)
-        assertEquals(NetworkMode.NR_ONLY, firstResult.getOrNull())
-        
-        // The next call should switch to LTE_ONLY
-        coEvery { preferencesRepository.getToggleModeConfig() } returns afterFirstToggle
+    fun `should target each SIM from its own mode`() = runTest {
+        val otherSubId = 2
+        coEvery { networkControlRepository.getCurrentNetworkMode(testSubId) } returns NetworkMode.LTE_ONLY
+        coEvery { networkControlRepository.getCurrentNetworkMode(otherSubId) } returns NetworkMode.NR_ONLY
+        coEvery { networkControlRepository.setNetworkMode(any(), any()) } returns Result.success(Unit)
+
+        assertEquals(NetworkMode.NR_ONLY, useCase(testSubId).getOrNull())
+        assertEquals(NetworkMode.LTE_ONLY, useCase(otherSubId).getOrNull())
+    }
+
+    @Test
+    fun `should target mode A when the current mode cannot be read`() = runTest {
+        coEvery { networkControlRepository.getCurrentNetworkMode(testSubId) } returns null
         coEvery { networkControlRepository.setNetworkMode(testSubId, NetworkMode.LTE_ONLY) } returns Result.success(Unit)
-        val afterSecondToggle = afterFirstToggle.toggle()
-        coEvery { preferencesRepository.setToggleModeConfig(afterSecondToggle) } returns Unit
-        
-        val secondResult = useCase(testSubId)
-        
-        assertTrue(secondResult.isSuccess)
-        assertEquals(NetworkMode.LTE_ONLY, secondResult.getOrNull())
+
+        assertEquals(NetworkMode.LTE_ONLY, useCase(testSubId).getOrNull())
     }
-    
+
     @Test
-    fun `should return failure when setNetworkMode fails and not update config`() = runTest {
-        // Given
-        val config = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY, nextModeIsB = true)
-        coEvery { preferencesRepository.getToggleModeConfig() } returns config
-        
-        val exception = RuntimeException("Network mode not supported")
-        coEvery { networkControlRepository.setNetworkMode(testSubId, NetworkMode.NR_ONLY) } returns Result.failure(exception)
-        
-        // When
+    fun `should target mode A when the SIM is on a mode outside the pair`() = runTest {
+        coEvery { networkControlRepository.getCurrentNetworkMode(testSubId) } returns NetworkMode.NR_LTE_GSM_WCDMA
+        coEvery { networkControlRepository.setNetworkMode(testSubId, NetworkMode.LTE_ONLY) } returns Result.success(Unit)
+
+        assertEquals(NetworkMode.LTE_ONLY, useCase(testSubId).getOrNull())
+    }
+
+    @Test
+    fun `should propagate a failure to apply the mode`() = runTest {
+        val failure = RuntimeException("binder died")
+        coEvery { networkControlRepository.getCurrentNetworkMode(testSubId) } returns NetworkMode.LTE_ONLY
+        coEvery { networkControlRepository.setNetworkMode(testSubId, NetworkMode.NR_ONLY) } returns Result.failure(failure)
+
         val result = useCase(testSubId)
-        
-        // Then
+
         assertTrue(result.isFailure)
-        assertEquals(exception, result.exceptionOrNull())
-        // Config should not be updated when network mode change fails
+        assertEquals(failure, result.exceptionOrNull())
+    }
+
+    @Test
+    fun `should report a thrown error as a failure`() = runTest {
+        coEvery { networkControlRepository.getCurrentNetworkMode(testSubId) } throws IllegalStateException("no service")
+
+        val result = useCase(testSubId)
+
+        assertTrue(result.isFailure)
+    }
+
+    /** The target is derived from the radio on each call, so a toggle persists nothing. */
+    @Test
+    fun `should not write the toggle configuration`() = runTest {
+        coEvery { networkControlRepository.getCurrentNetworkMode(testSubId) } returns NetworkMode.LTE_ONLY
+        coEvery { networkControlRepository.setNetworkMode(any(), any()) } returns Result.success(Unit)
+
+        useCase(testSubId)
+
         coVerify(exactly = 0) { preferencesRepository.setToggleModeConfig(any()) }
-    }
-    
-    @Test
-    fun `should handle repository exception`() = runTest {
-        // Given
-        coEvery { preferencesRepository.getToggleModeConfig() } throws RuntimeException("Repository error")
-        
-        // When
-        val result = useCase(testSubId)
-        
-        // Then
-        assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull() is RuntimeException)
     }
 }

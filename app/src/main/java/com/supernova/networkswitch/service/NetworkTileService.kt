@@ -117,10 +117,10 @@ class NetworkTileService : TileService() {
 
             if (config != null) {
                 tile.state = Tile.STATE_ACTIVE
-                tile.label = (currentNetworkMode ?: config.getCurrentMode()).displayName
+                tile.label = currentNetworkMode?.displayName ?: getString(R.string.tile_not_loaded)
                 tile.subtitle = getString(
                     R.string.tile_next_mode,
-                    config.getNextMode().displayName,
+                    config.nextAfter(currentNetworkMode).displayName,
                 )
             } else {
                 tile.state = Tile.STATE_INACTIVE

@@ -7,64 +7,52 @@ import org.junit.Test
  * Unit tests for ToggleModeConfig
  */
 class ToggleModeConfigTest {
-    
+
+    private val config = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY)
+
     @Test
-    fun testGetNextMode() {
-        val config = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY, nextModeIsB = true)
-        
-        // When nextModeIsB = true, should return modeB
-        assertEquals(NetworkMode.NR_ONLY, config.getNextMode())
-        
-        val config2 = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY, nextModeIsB = false)
-        
-        // When nextModeIsB = false, should return modeA
-        assertEquals(NetworkMode.LTE_ONLY, config2.getNextMode())
+    fun `should target mode B when the radio is on mode A`() {
+        assertEquals(NetworkMode.NR_ONLY, config.nextAfter(NetworkMode.LTE_ONLY))
     }
-    
+
     @Test
-    fun testGetCurrentMode() {
-        val config = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY, nextModeIsB = true)
-        
-        // When nextModeIsB = true, current should be modeA
-        assertEquals(NetworkMode.LTE_ONLY, config.getCurrentMode())
-        
-        val config2 = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY, nextModeIsB = false)
-        
-        // When nextModeIsB = false, current should be modeB
-        assertEquals(NetworkMode.NR_ONLY, config2.getCurrentMode())
+    fun `should target mode A when the radio is on mode B`() {
+        assertEquals(NetworkMode.LTE_ONLY, config.nextAfter(NetworkMode.NR_ONLY))
     }
-    
+
     @Test
-    fun testToggle() {
-        val config = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY, nextModeIsB = true)
-        
-        val toggledConfig = config.toggle()
-        
-        // Should flip the nextModeIsB flag
-        assertFalse(toggledConfig.nextModeIsB)
-        assertEquals(NetworkMode.LTE_ONLY, toggledConfig.modeA)
-        assertEquals(NetworkMode.NR_ONLY, toggledConfig.modeB)
+    fun `should target mode A when the radio mode is unknown`() {
+        assertEquals(NetworkMode.LTE_ONLY, config.nextAfter(null))
     }
-    
+
     @Test
-    fun testAlternatingToggle() {
-        val config = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY, nextModeIsB = true)
-        
-        // First toggle: next is NR_ONLY, current is LTE_ONLY
-        assertEquals(NetworkMode.NR_ONLY, config.getNextMode())
-        assertEquals(NetworkMode.LTE_ONLY, config.getCurrentMode())
-        
-        val afterFirstToggle = config.toggle()
-        
-        // After toggle: next is LTE_ONLY, current is NR_ONLY
-        assertEquals(NetworkMode.LTE_ONLY, afterFirstToggle.getNextMode())
-        assertEquals(NetworkMode.NR_ONLY, afterFirstToggle.getCurrentMode())
-        
-        val afterSecondToggle = afterFirstToggle.toggle()
-        
-        // After second toggle: back to original state
-        assertEquals(config.nextModeIsB, afterSecondToggle.nextModeIsB)
-        assertEquals(NetworkMode.NR_ONLY, afterSecondToggle.getNextMode())
-        assertEquals(NetworkMode.LTE_ONLY, afterSecondToggle.getCurrentMode())
+    fun `should target mode A when the radio is on a mode outside the pair`() {
+        assertEquals(NetworkMode.LTE_ONLY, config.nextAfter(NetworkMode.NR_LTE_GSM_WCDMA))
+    }
+
+    /** Two SIMs on different modes get different targets from one shared config. */
+    @Test
+    fun `should give each radio mode its own target from the same config`() {
+        assertEquals(NetworkMode.NR_ONLY, config.nextAfter(NetworkMode.LTE_ONLY))
+        assertEquals(NetworkMode.LTE_ONLY, config.nextAfter(NetworkMode.NR_ONLY))
+    }
+
+    @Test
+    fun `should alternate when the radio follows the reported target`() {
+        var actual: NetworkMode? = NetworkMode.LTE_ONLY
+
+        actual = config.nextAfter(actual)
+        assertEquals(NetworkMode.NR_ONLY, actual)
+
+        actual = config.nextAfter(actual)
+        assertEquals(NetworkMode.LTE_ONLY, actual)
+    }
+
+    @Test
+    fun `should handle a config whose two modes are identical`() {
+        val same = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.LTE_ONLY)
+
+        assertEquals(NetworkMode.LTE_ONLY, same.nextAfter(NetworkMode.LTE_ONLY))
+        assertEquals(NetworkMode.LTE_ONLY, same.nextAfter(null))
     }
 }

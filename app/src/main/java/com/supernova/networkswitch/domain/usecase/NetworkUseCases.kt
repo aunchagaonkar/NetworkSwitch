@@ -31,20 +31,13 @@ class ToggleNetworkModeUseCase @Inject constructor(
     suspend operator fun invoke(subId: Int): Result<NetworkMode> {
         return try {
             val toggleConfig = preferencesRepository.getToggleModeConfig()
-            
-            // Get the next mode to switch to (no current mode detection needed)
-            val targetMode = toggleConfig.getNextMode()
-            
-            // Set the network mode
-            val result = networkControlRepository.setNetworkMode(subId, targetMode)
-            
-            if (result.isSuccess) {
-                // Update the toggle state for next time
-                val newConfig = toggleConfig.toggle()
-                preferencesRepository.setToggleModeConfig(newConfig)
-            }
-            
-            result.map { targetMode }
+
+            // Read the mode this SIM is actually on: the target depends on it, and it
+            // may have been changed by another SIM's toggle or outside the app.
+            val actualMode = networkControlRepository.getCurrentNetworkMode(subId)
+            val targetMode = toggleConfig.nextAfter(actualMode)
+
+            networkControlRepository.setNetworkMode(subId, targetMode).map { targetMode }
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -141,7 +141,7 @@ class MainViewModel @Inject constructor(
     }
     
     fun getToggleButtonText(): String {
-        val nextMode = toggleModeConfig.getNextMode()
+        val nextMode = toggleModeConfig.nextAfter(currentNetworkMode)
         return "Switch to ${nextMode.displayName}"
     }
     
