@@ -6,9 +6,10 @@
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
-    <!-- Include datastore preferences for user settings -->
-    <include domain="file" path="datastore/" />
-    
-    <!-- Exclude any sensitive or device-specific data -->
-    <exclude domain="file" path="datastore/device_specific.preferences_pb" />
+    <!--
+      Preferences are excluded because the toggle configuration is filed per
+      subscription id, which the receiving device assigns independently. A restored
+      configuration would attach to a different SIM than it was written for.
+    -->
+    <exclude domain="file" path="datastore/" />
 </full-backup-content>

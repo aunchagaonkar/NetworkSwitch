@@ -5,6 +5,9 @@ import com.supernova.networkswitch.data.source.RootNetworkControlDataSource
 import com.supernova.networkswitch.data.source.ShizukuNetworkControlDataSource
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
@@ -24,6 +27,7 @@ class NetworkControlRepositoryImpl @Inject constructor(
     override suspend fun checkCompatibility(method: ControlMethod, subId: Int): CompatibilityState {
         return getDataSource(method).checkCompatibility(subId)
     }
+
 
     override suspend fun getCurrentNetworkMode(subId: Int): NetworkMode? {
         return try {

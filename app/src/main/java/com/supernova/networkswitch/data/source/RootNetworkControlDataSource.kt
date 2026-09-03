@@ -8,6 +8,7 @@ import android.os.IBinder
 import com.supernova.networkswitch.IRootController
 import com.supernova.networkswitch.service.RootNetworkControllerService
 import com.supernova.networkswitch.domain.model.CompatibilityState
+import kotlinx.coroutines.CancellationException
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.util.Utils
 import com.topjohnwu.superuser.ipc.RootService
@@ -54,6 +55,7 @@ class RootNetworkControlDataSource @Inject constructor(
         val controller = getNetworkController()
         controller?.setNetworkMode(subId, mode.value)
     }
+
 
     override fun isConnected(): Boolean = isServiceConnected
     

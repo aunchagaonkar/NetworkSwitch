@@ -56,17 +56,17 @@ interface PreferencesRepository {
     /**
      * Get toggle mode configuration
      */
-    suspend fun getToggleModeConfig(): ToggleModeConfig
+    suspend fun getToggleModeConfig(simKey: String): ToggleModeConfig
     
     /**
      * Set toggle mode configuration
      */
-    suspend fun setToggleModeConfig(config: ToggleModeConfig)
+    suspend fun setToggleModeConfig(simKey: String, config: ToggleModeConfig)
     
     /**
      * Observe toggle mode configuration changes
      */
-    fun observeToggleModeConfig(): Flow<ToggleModeConfig>
+    fun observeToggleModeConfig(simKey: String): Flow<ToggleModeConfig>
     
     /**
      * Get the selected subscription ID for the SIM card

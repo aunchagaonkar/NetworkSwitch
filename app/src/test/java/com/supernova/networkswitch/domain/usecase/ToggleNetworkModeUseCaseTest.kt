@@ -29,7 +29,7 @@ class ToggleNetworkModeUseCaseTest {
         networkControlRepository = mockk()
         preferencesRepository = mockk()
         useCase = ToggleNetworkModeUseCase(networkControlRepository, preferencesRepository)
-        coEvery { preferencesRepository.getToggleModeConfig() } returns config
+        coEvery { preferencesRepository.getToggleModeConfig(any()) } returns config
     }
 
     @Test
@@ -111,6 +111,6 @@ class ToggleNetworkModeUseCaseTest {
 
         useCase(testSubId)
 
-        coVerify(exactly = 0) { preferencesRepository.setToggleModeConfig(any()) }
+        coVerify(exactly = 0) { preferencesRepository.setToggleModeConfig(any(), any()) }
     }
 }

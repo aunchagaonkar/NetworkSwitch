@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
+import com.supernova.networkswitch.domain.usecase.GetEffectiveSubscriptionIdUseCase
 import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
 import com.supernova.networkswitch.domain.usecase.UpdateToggleModeConfigUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,7 +20,8 @@ import javax.inject.Inject
 @HiltViewModel
 class NetworkModeConfigViewModel @Inject constructor(
     private val getToggleModeConfigUseCase: GetToggleModeConfigUseCase,
-    private val updateToggleModeConfigUseCase: UpdateToggleModeConfigUseCase
+    private val updateToggleModeConfigUseCase: UpdateToggleModeConfigUseCase,
+    private val getEffectiveSubscriptionId: GetEffectiveSubscriptionIdUseCase
 ) : ViewModel() {
     
     private val _currentConfig = MutableStateFlow(
@@ -40,7 +42,7 @@ class NetworkModeConfigViewModel @Inject constructor(
     private fun loadCurrentConfiguration() {
         viewModelScope.launch {
             try {
-                val config = getToggleModeConfigUseCase()
+                val config = getToggleModeConfigUseCase(getEffectiveSubscriptionId())
                 _currentConfig.value = config
             } catch (e: Exception) {
                 // Use default configuration if loading fails
@@ -65,7 +67,7 @@ class NetworkModeConfigViewModel @Inject constructor(
         _isLoading.value = true
         viewModelScope.launch {
             try {
-                updateToggleModeConfigUseCase(_currentConfig.value)
+                updateToggleModeConfigUseCase(getEffectiveSubscriptionId(), _currentConfig.value)
                 _configSaved.value = true
             } catch (e: Exception) {
                 // Handle error (could show toast or snackbar)

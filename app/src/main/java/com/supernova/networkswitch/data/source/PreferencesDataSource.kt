@@ -10,6 +10,7 @@ import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -22,8 +23,9 @@ class PreferencesDataSource @Inject constructor(
     
     companion object {
         private val CONTROL_METHOD_KEY = stringPreferencesKey("control_method")
-        private val TOGGLE_MODE_A_KEY = intPreferencesKey("toggle_mode_a")
-        private val TOGGLE_MODE_B_KEY = intPreferencesKey("toggle_mode_b")
+
+        private fun modeAKey(simKey: String) = intPreferencesKey("toggle_mode_a_$simKey")
+        private fun modeBKey(simKey: String) = intPreferencesKey("toggle_mode_b_$simKey")
         private val SELECTED_SUBSCRIPTION_ID_KEY = intPreferencesKey("selected_subscription_id")
         
         private const val DEFAULT_CONTROL_METHOD = "SHIZUKU"
@@ -57,37 +59,34 @@ class PreferencesDataSource @Inject constructor(
     fun observeControlMethod(): Flow<ControlMethod> {
         return dataStore.data.map { preferences ->
             parseControlMethod(preferences[CONTROL_METHOD_KEY])
-        }
+        }.distinctUntilChanged()
     }
     
-    suspend fun getToggleModeConfig(): ToggleModeConfig {
-        return dataStore.data.map { preferences ->
-            val modeAValue = preferences[TOGGLE_MODE_A_KEY] ?: DEFAULT_MODE_A.value
-            val modeBValue = preferences[TOGGLE_MODE_B_KEY] ?: DEFAULT_MODE_B.value
-            val modeA = NetworkMode.fromValue(modeAValue) ?: DEFAULT_MODE_A
-            val modeB = NetworkMode.fromValue(modeBValue) ?: DEFAULT_MODE_B
+    suspend fun getToggleModeConfig(simKey: String): ToggleModeConfig {
+        return observeToggleModeConfig(simKey).first()
+    }
 
-            ToggleModeConfig(modeA, modeB)
-        }.first()
-    }
-    
-    suspend fun setToggleModeConfig(config: ToggleModeConfig) {
+    suspend fun setToggleModeConfig(simKey: String, config: ToggleModeConfig) {
         dataStore.edit { preferences ->
-            preferences[TOGGLE_MODE_A_KEY] = config.modeA.value
-            preferences[TOGGLE_MODE_B_KEY] = config.modeB.value
+            preferences[modeAKey(simKey)] = config.modeA.value
+            preferences[modeBKey(simKey)] = config.modeB.value
         }
     }
-    
-    fun observeToggleModeConfig(): Flow<ToggleModeConfig> {
-        return dataStore.data.map { preferences ->
-            val modeAValue = preferences[TOGGLE_MODE_A_KEY] ?: DEFAULT_MODE_A.value
-            val modeBValue = preferences[TOGGLE_MODE_B_KEY] ?: DEFAULT_MODE_B.value
-            val modeA = NetworkMode.fromValue(modeAValue) ?: DEFAULT_MODE_A
-            val modeB = NetworkMode.fromValue(modeBValue) ?: DEFAULT_MODE_B
 
-            ToggleModeConfig(modeA, modeB)
-        }
+    fun observeToggleModeConfig(simKey: String): Flow<ToggleModeConfig> {
+        return dataStore.data.map { readToggleModeConfig(it, simKey) }.distinctUntilChanged()
     }
+
+    private fun readToggleModeConfig(preferences: Preferences, simKey: String): ToggleModeConfig {
+        val modeAValue = preferences[modeAKey(simKey)] ?: DEFAULT_MODE_A.value
+        val modeBValue = preferences[modeBKey(simKey)] ?: DEFAULT_MODE_B.value
+
+        return ToggleModeConfig(
+            NetworkMode.fromValue(modeAValue) ?: DEFAULT_MODE_A,
+            NetworkMode.fromValue(modeBValue) ?: DEFAULT_MODE_B
+        )
+    }
+
     
     /**
      * Get the selected subscription ID for the SIM card
@@ -115,6 +114,6 @@ class PreferencesDataSource @Inject constructor(
     fun observeSelectedSubscriptionId(): Flow<Int> {
         return dataStore.data.map { preferences ->
             preferences[SELECTED_SUBSCRIPTION_ID_KEY] ?: DEFAULT_SUBSCRIPTION_ID
-        }
+        }.distinctUntilChanged()
     }
 }

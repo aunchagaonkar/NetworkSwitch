@@ -5,21 +5,29 @@ import android.service.quicksettings.TileService
 import android.util.Log
 import com.supernova.networkswitch.R
 import com.supernova.networkswitch.domain.model.NetworkMode
+import com.supernova.networkswitch.domain.model.SimConfigKey
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.GetEffectiveSubscriptionIdUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @AndroidEntryPoint
 class NetworkTileService : TileService() {
 
@@ -41,22 +49,36 @@ class NetworkTileService : TileService() {
      * update the tile.
      */
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var listeningJob: Job? = null
 
     private var currentNetworkMode: NetworkMode? = null
     private var toggleConfig: ToggleModeConfig? = null
 
     override fun onStartListening() {
         super.onStartListening()
-        serviceScope.launch {
+        listeningJob?.cancel()
+        listeningJob = serviceScope.launch {
             try {
-                preferencesRepository.observeToggleModeConfig().collect { newConfig ->
-                    toggleConfig = newConfig
-                    refreshNetworkState()
-                }
+                preferencesRepository.observeSelectedSubscriptionId()
+                    .mapLatest { SimConfigKey.forSubscription(getEffectiveSubscriptionIdUseCase()) }
+                    .distinctUntilChanged()
+                    .flatMapLatest { preferencesRepository.observeToggleModeConfig(it) }
+                    .collect { newConfig ->
+                        toggleConfig = newConfig
+                        refreshNetworkState()
+                    }
+            } catch (_: CancellationException) {
+                // Expected when the tile stops listening
             } catch (e: Exception) {
                 Log.e(TAG, "Tile: Failed to observe toggle config", e)
             }
         }
+    }
+
+    override fun onStopListening() {
+        super.onStopListening()
+        listeningJob?.cancel()
+        listeningJob = null
     }
 
     override fun onClick() {

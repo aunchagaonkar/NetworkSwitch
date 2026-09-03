@@ -5,6 +5,7 @@ import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.SimInfo
+import com.supernova.networkswitch.domain.model.SimConfigKey
 import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
@@ -30,7 +31,7 @@ class ToggleNetworkModeUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(subId: Int): Result<NetworkMode> {
         return try {
-            val toggleConfig = preferencesRepository.getToggleModeConfig()
+            val toggleConfig = preferencesRepository.getToggleModeConfig(SimConfigKey.forSubscription(subId))
 
             // Read the mode this SIM is actually on: the target depends on it, and it
             // may have been changed by another SIM's toggle or outside the app.
@@ -70,25 +71,19 @@ class UpdateControlMethodUseCase @Inject constructor(
     }
 }
 
-/**
- * Use case for getting toggle mode configuration
- */
 class GetToggleModeConfigUseCase @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) {
-    suspend operator fun invoke(): ToggleModeConfig {
-        return preferencesRepository.getToggleModeConfig()
+    suspend operator fun invoke(subId: Int): ToggleModeConfig {
+        return preferencesRepository.getToggleModeConfig(SimConfigKey.forSubscription(subId))
     }
 }
 
-/**
- * Use case for updating toggle mode configuration
- */
 class UpdateToggleModeConfigUseCase @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) {
-    suspend operator fun invoke(config: ToggleModeConfig) {
-        preferencesRepository.setToggleModeConfig(config)
+    suspend operator fun invoke(subId: Int, config: ToggleModeConfig) {
+        preferencesRepository.setToggleModeConfig(SimConfigKey.forSubscription(subId), config)
     }
 }
 

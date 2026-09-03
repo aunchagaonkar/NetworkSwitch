@@ -110,6 +110,19 @@ object SubscriptionSelection {
 }
 
 /**
+ * Storage keys for per-SIM configuration.
+ */
+object SimConfigKey {
+    /**
+     * Keyed on the subscription ID, which Android assigns as the row id of its SIM
+     * table. Rows persist, so a SIM normally keeps its id across removal and
+     * reinsertion; a rebuilt table or a re-downloaded eSIM profile gets a new id and
+     * that SIM falls back to defaults.
+     */
+    fun forSubscription(subId: Int): String = "sub_$subId"
+}
+
+/**
  * Outcome of querying the device for SIM cards.
  *
  * [Loaded] is the only outcome that reports the true set of SIMs. The others mean the

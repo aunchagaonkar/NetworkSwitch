@@ -5,18 +5,15 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- Include user preferences for cloud backup -->
-        <include domain="file" path="datastore/" />
-        
-        <!-- Exclude any sensitive or device-specific data -->
-        <exclude domain="file" path="datastore/device_specific.preferences_pb" />
+        <!--
+          Preferences are excluded because the toggle configuration is filed per
+          subscription id, which the receiving device assigns independently. A restored
+          configuration would attach to a different SIM than it was written for.
+        -->
+        <exclude domain="file" path="datastore/" />
     </cloud-backup>
-    
+
     <device-transfer>
-        <!-- Allow user settings to be transferred to new device -->
-        <include domain="file" path="datastore/" />
-        
-        <!-- Exclude device-specific data from transfer -->
-        <exclude domain="file" path="datastore/device_specific.preferences_pb" />
+        <exclude domain="file" path="datastore/" />
     </device-transfer>
 </data-extraction-rules>
