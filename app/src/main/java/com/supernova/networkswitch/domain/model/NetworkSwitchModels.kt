@@ -59,6 +59,21 @@ enum class NetworkMode(val displayName: String, val value: Int) {
         fun fromValue(value: Int): NetworkMode? {
             return values().find { it.value == value }
         }
+
+        /**
+         * The modes worth offering first: the full list is RIL terminology covering
+         * radios most devices do not have.
+         */
+        val common: List<NetworkMode> = listOf(
+            GSM_ONLY,
+            WCDMA_ONLY,
+            LTE_ONLY,
+            NR_ONLY,
+            NR_LTE
+        )
+
+        /** The modes not in [common], in declaration order. */
+        val advanced: List<NetworkMode> = entries - common.toSet()
     }
 }
 
