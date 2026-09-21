@@ -9,6 +9,7 @@
     <string name="mode_b_label">Mode B</string>
     <string name="save_configuration">Save Configuration</string>
     <string name="configuration_saved">Configuration saved successfully</string>
+    <string name="configuring_sim">Configuring: %1$s</string>
 
     <!-- Quick Settings tiles -->
     <string name="sim_switch">SIM Select</string>

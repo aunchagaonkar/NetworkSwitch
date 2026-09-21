@@ -103,6 +103,7 @@ private fun MainScreen(
             if (compatibilityState is CompatibilityState.Compatible) {
                 NetworkToggleCard(
                     currentMode = viewModel.currentNetworkMode,
+                    activeSimName = viewModel.activeSimName,
                     toggleButtonText = viewModel.getToggleButtonText(),
                     isLoading = viewModel.isLoading,
                     onToggleClick = { viewModel.toggleNetworkMode() }

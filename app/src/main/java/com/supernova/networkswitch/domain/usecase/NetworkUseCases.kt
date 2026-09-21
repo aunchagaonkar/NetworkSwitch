@@ -103,6 +103,20 @@ class GetAvailableSimsUseCase @Inject constructor(
 }
 
 /**
+ * Name of the SIM with the given subscription ID. Null with fewer than two SIMs, where
+ * there is nothing to tell apart, and when the SIM set cannot be read.
+ */
+class GetSimNameUseCase @Inject constructor(
+    private val getAvailableSims: GetAvailableSimsUseCase
+) {
+    suspend operator fun invoke(subId: Int): String? {
+        val sims = (getAvailableSims() as? SimQueryResult.Loaded)?.sims.orEmpty()
+        if (sims.size < 2) return null
+        return sims.find { it.subscriptionId == subId }?.displayName
+    }
+}
+
+/**
  * Use case for getting the selected subscription ID
  */
 class GetSelectedSubscriptionIdUseCase @Inject constructor(

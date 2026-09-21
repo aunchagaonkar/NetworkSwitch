@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.usecase.GetEffectiveSubscriptionIdUseCase
+import com.supernova.networkswitch.domain.usecase.GetSimNameUseCase
 import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
 import com.supernova.networkswitch.domain.usecase.UpdateToggleModeConfigUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,7 +22,8 @@ import javax.inject.Inject
 class NetworkModeConfigViewModel @Inject constructor(
     private val getToggleModeConfigUseCase: GetToggleModeConfigUseCase,
     private val updateToggleModeConfigUseCase: UpdateToggleModeConfigUseCase,
-    private val getEffectiveSubscriptionId: GetEffectiveSubscriptionIdUseCase
+    private val getEffectiveSubscriptionId: GetEffectiveSubscriptionIdUseCase,
+    private val getSimName: GetSimNameUseCase
 ) : ViewModel() {
     
     private val _currentConfig = MutableStateFlow(
@@ -34,6 +36,16 @@ class NetworkModeConfigViewModel @Inject constructor(
     
     private val _configSaved = MutableStateFlow(false)
     val configSaved: StateFlow<Boolean> = _configSaved.asStateFlow()
+
+    /** The SIM being configured; null when there is only one SIM to configure. */
+    private val _simName = MutableStateFlow<String?>(null)
+    val simName: StateFlow<String?> = _simName.asStateFlow()
+
+    /**
+     * Resolved once, so a save lands on the SIM that was loaded even if the selected SIM
+     * changes while the screen is open. Null until loading finishes.
+     */
+    private var subId: Int? = null
     
     init {
         loadCurrentConfiguration()
@@ -42,8 +54,10 @@ class NetworkModeConfigViewModel @Inject constructor(
     private fun loadCurrentConfiguration() {
         viewModelScope.launch {
             try {
-                val config = getToggleModeConfigUseCase(getEffectiveSubscriptionId())
-                _currentConfig.value = config
+                val resolved = getEffectiveSubscriptionId()
+                subId = resolved
+                _simName.value = getSimName(resolved)
+                _currentConfig.value = getToggleModeConfigUseCase(resolved)
             } catch (e: Exception) {
                 // Use default configuration if loading fails
                 _currentConfig.value = ToggleModeConfig(NetworkMode.LTE_ONLY, NetworkMode.NR_ONLY)
@@ -63,11 +77,12 @@ class NetworkModeConfigViewModel @Inject constructor(
         if (_currentConfig.value.modeA == _currentConfig.value.modeB) {
             return // Don't save if both modes are the same
         }
+        val target = subId ?: return
         
         _isLoading.value = true
         viewModelScope.launch {
             try {
-                updateToggleModeConfigUseCase(getEffectiveSubscriptionId(), _currentConfig.value)
+                updateToggleModeConfigUseCase(target, _currentConfig.value)
                 _configSaved.value = true
             } catch (e: Exception) {
                 // Handle error (could show toast or snackbar)

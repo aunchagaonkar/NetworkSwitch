@@ -11,6 +11,7 @@ import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.SimConfigKey
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.usecase.CheckCompatibilityUseCase
+import com.supernova.networkswitch.domain.usecase.GetSimNameUseCase
 import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.GetEffectiveSubscriptionIdUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
@@ -34,6 +35,7 @@ class MainViewModel @Inject constructor(
     private val getEffectiveSubscriptionIdUseCase: GetEffectiveSubscriptionIdUseCase,
     private val toggleNetworkModeUseCase: ToggleNetworkModeUseCase,
     private val updateControlMethodUseCase: UpdateControlMethodUseCase,
+    private val getSimNameUseCase: GetSimNameUseCase,
     private val preferencesRepository: PreferencesRepository
 ) : ViewModel() {
     
@@ -50,6 +52,10 @@ class MainViewModel @Inject constructor(
         private set
     
     var compatibilityState by mutableStateOf<CompatibilityState>(CompatibilityState.Pending)
+        private set
+
+    /** The SIM the toggle acts on; null when there is only one SIM to act on. */
+    var activeSimName by mutableStateOf<String?>(null)
         private set
 
     private var refreshJob: Job? = null
@@ -77,6 +83,15 @@ class MainViewModel @Inject constructor(
                 .flatMapLatest { preferencesRepository.observeToggleModeConfig(it) }
                 .collectLatest { newConfig -> toggleModeConfig = newConfig }
         }
+
+        viewModelScope.launch {
+            preferencesRepository.observeSelectedSubscriptionId()
+                .collectLatest { loadActiveSim() }
+        }
+    }
+
+    private suspend fun loadActiveSim() {
+        activeSimName = getSimNameUseCase(getEffectiveSubscriptionIdUseCase())
     }
     
     /**
@@ -114,6 +129,7 @@ class MainViewModel @Inject constructor(
     /** Called on resume; the activity has no other signal that state may be stale. */
     fun refreshAllData() {
         refresh()
+        viewModelScope.launch { loadActiveSim() }
     }
     
     fun toggleNetworkMode() {
