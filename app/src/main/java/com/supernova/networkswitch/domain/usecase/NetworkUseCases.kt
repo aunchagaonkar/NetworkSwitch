@@ -1,20 +1,27 @@
 package com.supernova.networkswitch.domain.usecase
 
+import android.telephony.SubscriptionManager
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
-import com.supernova.networkswitch.domain.model.NetworkMode
+import com.supernova.networkswitch.domain.model.SimConfigKey
+import com.supernova.networkswitch.domain.model.SimQueryResult
+import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
+import com.supernova.networkswitch.domain.model.ToggleState
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
+import com.supernova.networkswitch.domain.repository.SimRepository
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
 class CheckCompatibilityUseCase @Inject constructor(
     private val networkControlRepository: NetworkControlRepository,
-    private val preferencesRepository: PreferencesRepository
+    private val preferencesRepository: PreferencesRepository,
+    private val getEffectiveSubscriptionId: GetEffectiveSubscriptionIdUseCase
 ) {
     suspend operator fun invoke(): CompatibilityState {
         val controlMethod = preferencesRepository.getControlMethod()
-        return networkControlRepository.checkCompatibility(controlMethod)
+        return networkControlRepository.checkCompatibility(controlMethod, getEffectiveSubscriptionId())
     }
 }
 
@@ -22,41 +29,41 @@ class ToggleNetworkModeUseCase @Inject constructor(
     private val networkControlRepository: NetworkControlRepository,
     private val preferencesRepository: PreferencesRepository
 ) {
-    suspend operator fun invoke(subId: Int): Result<NetworkMode> {
+    suspend operator fun invoke(subId: Int): Result<ToggleState> {
         return try {
-            val toggleConfig = preferencesRepository.getToggleModeConfig()
-            
-            // Get the next mode to switch to (no current mode detection needed)
-            val targetMode = toggleConfig.getNextMode()
-            
-            // Set the network mode
-            val result = networkControlRepository.setNetworkMode(subId, targetMode)
-            
-            if (result.isSuccess) {
-                // Update the toggle state for next time
-                val newConfig = toggleConfig.toggle()
-                preferencesRepository.setToggleModeConfig(newConfig)
+            val simKey = SimConfigKey.forSubscription(subId)
+            val config = preferencesRepository.getToggleModeConfig(simKey)
+            val actual = networkControlRepository.getCurrentNetworkMode(subId)
+            val target = config.resolve(actual, preferencesRepository.getLastAppliedMode(simKey)).next
+
+            networkControlRepository.setNetworkMode(subId, target).getOrElse { return Result.failure(it) }
+            try {
+                preferencesRepository.setLastAppliedMode(simKey, target)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The mode is already applied; the record is only a fallback for unreadable modes.
             }
-            
-            result.map { targetMode }
+
+            Result.success(config.resolve(target, null))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 }
 
-/**
- * Use case for getting current network mode
- */
-class GetCurrentNetworkModeUseCase @Inject constructor(
-    private val networkControlRepository: NetworkControlRepository
+class GetToggleStateUseCase @Inject constructor(
+    private val networkControlRepository: NetworkControlRepository,
+    private val preferencesRepository: PreferencesRepository
 ) {
-    suspend operator fun invoke(subId: Int): Result<NetworkMode?> {
-        return try {
-            Result.success(networkControlRepository.getCurrentNetworkMode(subId))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    suspend operator fun invoke(subId: Int): ToggleState {
+        val simKey = SimConfigKey.forSubscription(subId)
+        return preferencesRepository.getToggleModeConfig(simKey).resolve(
+            networkControlRepository.getCurrentNetworkMode(subId),
+            preferencesRepository.getLastAppliedMode(simKey)
+        )
     }
 }
 
@@ -71,24 +78,112 @@ class UpdateControlMethodUseCase @Inject constructor(
     }
 }
 
-/**
- * Use case for getting toggle mode configuration
- */
 class GetToggleModeConfigUseCase @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) {
-    suspend operator fun invoke(): ToggleModeConfig {
-        return preferencesRepository.getToggleModeConfig()
+    suspend operator fun invoke(subId: Int): ToggleModeConfig {
+        return preferencesRepository.getToggleModeConfig(SimConfigKey.forSubscription(subId))
+    }
+}
+
+class UpdateToggleModeConfigUseCase @Inject constructor(
+    private val preferencesRepository: PreferencesRepository
+) {
+    suspend operator fun invoke(subId: Int, config: ToggleModeConfig) {
+        preferencesRepository.setToggleModeConfig(SimConfigKey.forSubscription(subId), config)
     }
 }
 
 /**
- * Use case for updating toggle mode configuration
+ * Use case for getting available SIM cards in the device
  */
-class UpdateToggleModeConfigUseCase @Inject constructor(
+class GetAvailableSimsUseCase @Inject constructor(
+    private val simRepository: SimRepository
+) {
+    suspend operator fun invoke(): SimQueryResult {
+        return try {
+            simRepository.getAvailableSimCards()
+        } catch (e: Exception) {
+            SimQueryResult.Failed(e)
+        }
+    }
+}
+
+/**
+ * Name of the SIM with the given subscription ID. Null with fewer than two SIMs, where
+ * there is nothing to tell apart, and when the SIM set cannot be read.
+ */
+class GetSimNameUseCase @Inject constructor(
+    private val getAvailableSims: GetAvailableSimsUseCase
+) {
+    suspend operator fun invoke(subId: Int): String? {
+        val sims = (getAvailableSims() as? SimQueryResult.Loaded)?.sims.orEmpty()
+        if (sims.size < 2) return null
+        return sims.find { it.subscriptionId == subId }?.displayName
+    }
+}
+
+/**
+ * Use case for getting the selected subscription ID
+ */
+class GetSelectedSubscriptionIdUseCase @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) {
-    suspend operator fun invoke(config: ToggleModeConfig) {
-        preferencesRepository.setToggleModeConfig(config)
+    suspend operator fun invoke(): Int {
+        return preferencesRepository.getSelectedSubscriptionId()
+    }
+}
+
+/**
+ * Use case for setting the selected subscription ID
+ */
+class SetSelectedSubscriptionIdUseCase @Inject constructor(
+    private val preferencesRepository: PreferencesRepository
+) {
+    suspend operator fun invoke(subscriptionId: Int) {
+        preferencesRepository.setSelectedSubscriptionId(subscriptionId)
+    }
+}
+
+/**
+ * Use case for getting the effective subscription ID to use for network operations
+ * Returns the user's selected subscription ID, or the default if "Auto" is selected
+ * Includes validation to handle edge cases like removed SIM cards
+ */
+class GetEffectiveSubscriptionIdUseCase @Inject constructor(
+    private val preferencesRepository: PreferencesRepository,
+    private val simRepository: SimRepository
+) {
+    suspend operator fun invoke(): Int {
+        val selectedSubId = preferencesRepository.getSelectedSubscriptionId()
+
+        if (selectedSubId == SubscriptionSelection.AUTO) {
+            return SubscriptionManager.getDefaultDataSubscriptionId()
+        }
+
+        val query = try {
+            simRepository.getAvailableSimCards()
+        } catch (e: Exception) {
+            SimQueryResult.Failed(e)
+        }
+
+        // Only a successful query proves the SIM is gone. Anything else leaves the
+        // selection intact, so a denied permission or a transient failure cannot
+        // silently discard it.
+        val sims = when (query) {
+            is SimQueryResult.Loaded -> query.sims
+            SimQueryResult.PermissionDenied, is SimQueryResult.Failed -> return selectedSubId
+        }
+
+        return if (sims.any { it.subscriptionId == selectedSubId }) {
+            selectedSubId
+        } else {
+            try {
+                preferencesRepository.setSelectedSubscriptionId(SubscriptionSelection.AUTO)
+            } catch (e: Exception) {
+                // Selection could not be reset; the default is still the safe target.
+            }
+            SubscriptionManager.getDefaultDataSubscriptionId()
+        }
     }
 }

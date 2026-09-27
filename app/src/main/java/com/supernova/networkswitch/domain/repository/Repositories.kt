@@ -3,6 +3,9 @@ package com.supernova.networkswitch.domain.repository
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.NetworkMode
+import com.supernova.networkswitch.domain.model.SimInfo
+import com.supernova.networkswitch.domain.model.SimQueryResult
+import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import kotlinx.coroutines.flow.Flow
 
@@ -13,7 +16,7 @@ interface NetworkControlRepository {
     /**
      * Check if network control is compatible with current device/method
      */
-    suspend fun checkCompatibility(method: ControlMethod): CompatibilityState
+    suspend fun checkCompatibility(method: ControlMethod, subId: Int): CompatibilityState
     
     /**
      * Get current network mode
@@ -24,11 +27,6 @@ interface NetworkControlRepository {
      * Set network mode
      */
     suspend fun setNetworkMode(subId: Int, mode: NetworkMode): Result<Unit>
-    
-    /**
-     * Reset connections - useful when switching control methods
-     */
-    suspend fun resetConnections()
 }
 
 /**
@@ -53,15 +51,59 @@ interface PreferencesRepository {
     /**
      * Get toggle mode configuration
      */
-    suspend fun getToggleModeConfig(): ToggleModeConfig
+    suspend fun getToggleModeConfig(simKey: String): ToggleModeConfig
     
     /**
      * Set toggle mode configuration
      */
-    suspend fun setToggleModeConfig(config: ToggleModeConfig)
+    suspend fun setToggleModeConfig(simKey: String, config: ToggleModeConfig)
     
     /**
      * Observe toggle mode configuration changes
      */
-    fun observeToggleModeConfig(): Flow<ToggleModeConfig>
+    fun observeToggleModeConfig(simKey: String): Flow<ToggleModeConfig>
+
+    /**
+     * The mode the app last set on this SIM; the fallback when the radio's mode cannot be read.
+     */
+    suspend fun getLastAppliedMode(simKey: String): NetworkMode?
+
+    suspend fun setLastAppliedMode(simKey: String, mode: NetworkMode)
+
+    /**
+     * Get the selected subscription ID for the SIM card
+     * Returns [SubscriptionSelection.AUTO] if no specific SIM is selected
+     */
+    suspend fun getSelectedSubscriptionId(): Int
+    
+    /**
+     * Set the selected subscription ID for the SIM card
+     * Pass [SubscriptionSelection.AUTO] to use the default subscription
+     */
+    suspend fun setSelectedSubscriptionId(subscriptionId: Int)
+    
+    /**
+     * Observe changes to the selected subscription ID
+     */
+    fun observeSelectedSubscriptionId(): Flow<Int>
+}
+
+/**
+ * Repository interface for SIM card operations
+ */
+interface SimRepository {
+    /**
+     * Query the available SIM cards, ordered by SIM slot.
+     *
+     * Returns [SimQueryResult.PermissionDenied] or [SimQueryResult.Failed] when the set
+     * cannot be determined, so callers can tell that apart from a device with no SIMs.
+     */
+    suspend fun getAvailableSimCards(): SimQueryResult
+
+    /**
+     * Emits the current SIM set, then again whenever the device's subscriptions change.
+     *
+     * Emits once on collection so a collector needs no separate initial query.
+     */
+    fun observeAvailableSimCards(): Flow<SimQueryResult>
 }

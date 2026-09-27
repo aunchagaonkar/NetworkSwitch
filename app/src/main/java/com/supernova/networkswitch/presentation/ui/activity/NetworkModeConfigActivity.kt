@@ -54,6 +54,7 @@ private fun NetworkModeConfigScreen(
     val currentConfig by viewModel.currentConfig.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val configSaved by viewModel.configSaved.collectAsState()
+    val simName by viewModel.simName.collectAsState()
     
     // Show toast when configuration is saved
     LaunchedEffect(configSaved) {
@@ -111,6 +112,15 @@ private fun NetworkModeConfigScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    simName?.let { name ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.configuring_sim, name),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
             

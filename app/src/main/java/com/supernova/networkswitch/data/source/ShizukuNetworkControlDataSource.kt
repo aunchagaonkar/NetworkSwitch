@@ -10,8 +10,9 @@ import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.service.ShizukuControllerService
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import rikka.shizuku.Shizuku
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,18 +25,23 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
     @ApplicationContext private val context: Context
 ) : NetworkControlDataSource {
     
+    @Volatile
     private var userService: IShizukuController? = null
     private val _isConnected = MutableStateFlow(false)
-    val isConnected = _isConnected.asStateFlow()
     
     private companion object {
         private const val SHIZUKU_PERMISSION_REQUEST_ID = 8
+
+        /** bindUserService never calls back if the service cannot start. */
+        private const val BIND_TIMEOUT_MS = 5_000L
     }
 
     override suspend fun checkCompatibility(subId: Int): CompatibilityState {
         return try {
             // Check if Shizuku service is running
             if (!Shizuku.pingBinder()) {
+                // Any cached binder belongs to the process that just went away.
+                resetConnection()
                 return CompatibilityState.Incompatible("Shizuku service not running")
             }
             
@@ -49,9 +55,16 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
             if (permission != PackageManager.PERMISSION_GRANTED) {
                 return CompatibilityState.PermissionDenied(com.supernova.networkswitch.domain.model.ControlMethod.SHIZUKU)
             }
-            
-            // Both service and permission checks passed
+
+            // A reachable Shizuku with permission still does not mean the user service
+            // is bound, and reads go through that binding.
+            if (!ensureServiceBinding()) {
+                return CompatibilityState.Incompatible("Shizuku user service unavailable")
+            }
+
             CompatibilityState.Compatible
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             CompatibilityState.Incompatible("Shizuku not available: ${e.message}")
         }
@@ -72,33 +85,18 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
 
     override suspend fun setNetworkMode(subId: Int, mode: NetworkMode) {
         if (ensureServiceBinding()) {
-            try {
-                userService?.setNetworkMode(subId, mode.value)
-            } catch (e: Exception) {
-                throw e
-            }
+            val service = userService
+                ?: throw IllegalStateException("Shizuku user service unavailable")
+            service.setNetworkMode(subId, mode.value)
         } else {
             throw SecurityException("Shizuku permission not granted or service binding failed")
         }
     }
 
-    override fun isConnected(): Boolean = _isConnected.value
-    
-    override fun resetConnection() {
+
+    private fun resetConnection() {
         userService = null
         _isConnected.value = false
-    }
-
-    /**
-     * Simple permission and service check without delays or complex logic
-     */
-    private fun hasPermissionAndService(): Boolean {
-        return try {
-            // Only check if service is already connected, don't call Shizuku APIs that might block
-            userService != null && _isConnected.value
-        } catch (e: Exception) {
-            false
-        }
     }
 
     /**
@@ -110,13 +108,16 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
             return false
         }
         
-        // If service is already connected, return true
-        if (userService != null && _isConnected.value) {
+        // onServiceDisconnected is not guaranteed to have run yet, so trust the binder
+        // itself rather than the connected flag.
+        val cached = userService
+        if (cached != null && _isConnected.value && cached.asBinder()?.pingBinder() == true) {
             return true
         }
+        resetConnection()
         
-        // Bind service asynchronously with timeout
         return try {
+            withTimeoutOrNull(BIND_TIMEOUT_MS) {
             suspendCancellableCoroutine { continuation ->
                 val args = Shizuku.UserServiceArgs(ComponentName(context, ShizukuControllerService::class.java))
                     .processNameSuffix("service")
@@ -145,11 +146,6 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
                     }
                 }
 
-                continuation.invokeOnCancellation {
-                    userService = null
-                    _isConnected.value = false
-                }
-
                 try {
                     Shizuku.bindUserService(args, serviceConnection)
                 } catch (e: Exception) {
@@ -158,6 +154,9 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
                     }
                 }
             }
+            } ?: false
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             _isConnected.value = false
             false

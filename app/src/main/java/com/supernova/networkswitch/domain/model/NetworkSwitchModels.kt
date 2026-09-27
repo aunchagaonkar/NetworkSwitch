@@ -51,7 +51,14 @@ enum class NetworkMode(val displayName: String, val value: Int) {
     NR_LTE_TDSCDMA_WCDMA("3G/4G/5G (NR/LTE/TD-SCDMA/WCDMA)", 31),
     NR_LTE_TDSCDMA_GSM_WCDMA("2G/3G/4G/5G (NR/LTE/TD-SCDMA/GSM/WCDMA)", 32),
     NR_LTE_TDSCDMA_CDMA_EVDO_GSM_WCDMA("Global 5G + TD-SCDMA (All Networks)", 33);
-    
+
+    /**
+     * GSM_UMTS and WCDMA_PREF allow the same radios, so on Android 11+ they store the
+     * same bitmask and GSM_UMTS reads back as WCDMA_PREF.
+     */
+    infix fun sameRadiosAs(other: NetworkMode?): Boolean =
+        this == other || setOf(this, other) == setOf(WCDMA_PREF, GSM_UMTS)
+
     companion object {
         /**
          * Get NetworkMode by RIL constant value
@@ -59,6 +66,21 @@ enum class NetworkMode(val displayName: String, val value: Int) {
         fun fromValue(value: Int): NetworkMode? {
             return values().find { it.value == value }
         }
+
+        /**
+         * The modes worth offering first: the full list is RIL terminology covering
+         * radios most devices do not have.
+         */
+        val common: List<NetworkMode> = listOf(
+            GSM_ONLY,
+            WCDMA_ONLY,
+            LTE_ONLY,
+            NR_ONLY,
+            NR_LTE
+        )
+
+        /** The modes not in [common], in declaration order. */
+        val advanced: List<NetworkMode> = entries - common.toSet()
     }
 }
 
@@ -67,25 +89,77 @@ enum class NetworkMode(val displayName: String, val value: Int) {
  */
 data class ToggleModeConfig(
     val modeA: NetworkMode,
-    val modeB: NetworkMode,
-    val nextModeIsB: Boolean = true
+    val modeB: NetworkMode
 ) {
-    fun getNextMode(): NetworkMode {
-        return if (nextModeIsB) modeB else modeA
-    }
-    
-    fun getCurrentMode(): NetworkMode {
-        return if (nextModeIsB) modeA else modeB
-    }
-    
-    fun toggle(): ToggleModeConfig {
-        return copy(nextModeIsB = !nextModeIsB)
+    /**
+     * Matches modes by [NetworkMode.sameRadiosAs]. When [actual] is unreadable, alternates
+     * from [lastApplied]; a mode outside the pair restarts at [modeA].
+     */
+    fun resolve(actual: NetworkMode?, lastApplied: NetworkMode?): ToggleState = when {
+        modeA sameRadiosAs actual -> ToggleState(modeA, modeB)
+        modeB sameRadiosAs actual -> ToggleState(modeB, modeA)
+        actual == null && lastApplied == modeA -> ToggleState(null, modeB)
+        else -> ToggleState(actual, modeA)
     }
 }
+
+data class ToggleState(
+    val current: NetworkMode?,
+    val next: NetworkMode
+)
 
 sealed class CompatibilityState {
     object Pending : CompatibilityState()
     object Compatible : CompatibilityState()
     data class Incompatible(val reason: String) : CompatibilityState()
     data class PermissionDenied(val method: ControlMethod) : CompatibilityState()
+}
+
+/**
+ * Represents information about a SIM card in the device
+ */
+data class SimInfo(
+    val subscriptionId: Int,
+    val simSlotIndex: Int,
+    val displayName: String
+)
+
+/**
+ * Values for the stored SIM selection.
+ */
+object SubscriptionSelection {
+    /**
+     * Follow the system default data subscription instead of a fixed SIM.
+     *
+     * Equal to `SubscriptionManager.INVALID_SUBSCRIPTION_ID`, so a subscription ID read
+     * back from the platform can never be distinguished from this. Only compare against
+     * it for a value that came from the stored selection.
+     */
+    const val AUTO = -1
+}
+
+/**
+ * Storage keys for per-SIM configuration.
+ */
+object SimConfigKey {
+    /**
+     * Keyed on the subscription ID, which Android assigns as the row id of its SIM
+     * table. Rows persist, so a SIM normally keeps its id across removal and
+     * reinsertion; a rebuilt table or a re-downloaded eSIM profile gets a new id and
+     * that SIM falls back to defaults.
+     */
+    fun forSubscription(subId: Int): String = "sub_$subId"
+}
+
+/**
+ * Outcome of querying the device for SIM cards.
+ *
+ * [Loaded] is the only outcome that reports the true set of SIMs. The others mean the
+ * set could not be determined, which is not the same as the device having no SIMs — a
+ * stored SIM selection must survive them.
+ */
+sealed interface SimQueryResult {
+    data class Loaded(val sims: List<SimInfo>) : SimQueryResult
+    data object PermissionDenied : SimQueryResult
+    data class Failed(val cause: Throwable) : SimQueryResult
 }

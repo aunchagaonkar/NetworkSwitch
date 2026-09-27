@@ -6,8 +6,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.supernova.networkswitch.data.repository.NetworkControlRepositoryImpl
 import com.supernova.networkswitch.data.repository.PreferencesRepositoryImpl
+import com.supernova.networkswitch.data.repository.SimRepositoryImpl
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
+import com.supernova.networkswitch.domain.repository.SimRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -36,6 +38,12 @@ abstract class DataModule {
     abstract fun bindPreferencesRepository(
         preferencesRepositoryImpl: PreferencesRepositoryImpl
     ): PreferencesRepository
+    
+    @Binds
+    @Singleton
+    abstract fun bindSimRepository(
+        simRepositoryImpl: SimRepositoryImpl
+    ): SimRepository
     
     companion object {
         @Provides

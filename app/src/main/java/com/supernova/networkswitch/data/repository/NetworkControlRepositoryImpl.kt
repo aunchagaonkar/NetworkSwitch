@@ -5,6 +5,7 @@ import com.supernova.networkswitch.data.source.RootNetworkControlDataSource
 import com.supernova.networkswitch.data.source.ShizukuNetworkControlDataSource
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
+import kotlinx.coroutines.CancellationException
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
@@ -21,10 +22,8 @@ class NetworkControlRepositoryImpl @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) : NetworkControlRepository {
     
-    override suspend fun checkCompatibility(method: ControlMethod): CompatibilityState {
-        val dataSource = getDataSource(method)
-        val subId = android.telephony.SubscriptionManager.getDefaultDataSubscriptionId()
-        return dataSource.checkCompatibility(subId)
+    override suspend fun checkCompatibility(method: ControlMethod, subId: Int): CompatibilityState {
+        return getDataSource(method).checkCompatibility(subId)
     }
 
     override suspend fun getCurrentNetworkMode(subId: Int): NetworkMode? {
@@ -32,6 +31,8 @@ class NetworkControlRepositoryImpl @Inject constructor(
             val method = preferencesRepository.getControlMethod()
             val dataSource = getDataSource(method)
             dataSource.getCurrentNetworkMode(subId)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             null
         }
@@ -43,17 +44,11 @@ class NetworkControlRepositoryImpl @Inject constructor(
             val dataSource = getDataSource(method)
             dataSource.setNetworkMode(subId, mode)
             Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
-
-    /**
-     * Reset connections for both data sources - useful when switching control methods
-     */
-    override suspend fun resetConnections() {
-        rootDataSource.resetConnection()
-        shizukuDataSource.resetConnection()
     }
 
     private fun getDataSource(method: ControlMethod): NetworkControlDataSource {

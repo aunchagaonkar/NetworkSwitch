@@ -123,7 +123,9 @@ fun CompatibilityCard(
 @Composable
 fun NetworkToggleCard(
     currentMode: NetworkMode?,
+    activeSimName: String?,
     toggleButtonText: String,
+    canToggle: Boolean,
     isLoading: Boolean,
     onToggleClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -133,6 +135,15 @@ fun NetworkToggleCard(
         modifier = modifier
     ) {
         Spacer(modifier = Modifier.height(16.dp))
+
+        if (activeSimName != null) {
+            Text(
+                text = "SIM: $activeSimName",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
         
         Text(
             text = if (currentMode != null) "Current: ${currentMode.displayName}" else "Network mode unavailable",
@@ -157,7 +168,7 @@ fun NetworkToggleCard(
         
         Button(
             onClick = onToggleClick,
-            enabled = !isLoading && currentMode != null,
+            enabled = !isLoading && canToggle,
             modifier = Modifier.fillMaxWidth()
         ) {
             if (isLoading) {
