@@ -27,11 +27,6 @@ interface NetworkControlRepository {
      * Set network mode
      */
     suspend fun setNetworkMode(subId: Int, mode: NetworkMode): Result<Unit>
-    
-    /**
-     * Reset connections - useful when switching control methods
-     */
-    suspend fun resetConnections()
 }
 
 /**

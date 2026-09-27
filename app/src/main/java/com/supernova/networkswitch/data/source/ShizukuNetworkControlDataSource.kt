@@ -10,7 +10,6 @@ import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.service.ShizukuControllerService
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
@@ -29,7 +28,6 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
     @Volatile
     private var userService: IShizukuController? = null
     private val _isConnected = MutableStateFlow(false)
-    val isConnected = _isConnected.asStateFlow()
     
     private companion object {
         private const val SHIZUKU_PERMISSION_REQUEST_ID = 8
@@ -65,6 +63,8 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
             }
 
             CompatibilityState.Compatible
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             CompatibilityState.Incompatible("Shizuku not available: ${e.message}")
         }
@@ -94,9 +94,7 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
     }
 
 
-    override fun isConnected(): Boolean = _isConnected.value
-    
-    override fun resetConnection() {
+    private fun resetConnection() {
         userService = null
         _isConnected.value = false
     }

@@ -6,8 +6,6 @@ import com.supernova.networkswitch.data.source.ShizukuNetworkControlDataSource
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
@@ -28,12 +26,13 @@ class NetworkControlRepositoryImpl @Inject constructor(
         return getDataSource(method).checkCompatibility(subId)
     }
 
-
     override suspend fun getCurrentNetworkMode(subId: Int): NetworkMode? {
         return try {
             val method = preferencesRepository.getControlMethod()
             val dataSource = getDataSource(method)
             dataSource.getCurrentNetworkMode(subId)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             null
         }
@@ -45,19 +44,13 @@ class NetworkControlRepositoryImpl @Inject constructor(
             val dataSource = getDataSource(method)
             dataSource.setNetworkMode(subId, mode)
             Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    /**
-     * Reset connections for both data sources - useful when switching control methods
-     */
-    override suspend fun resetConnections() {
-        rootDataSource.resetConnection()
-        shizukuDataSource.resetConnection()
-    }
-    
     private fun getDataSource(method: ControlMethod): NetworkControlDataSource {
         return when (method) {
             ControlMethod.ROOT -> rootDataSource
