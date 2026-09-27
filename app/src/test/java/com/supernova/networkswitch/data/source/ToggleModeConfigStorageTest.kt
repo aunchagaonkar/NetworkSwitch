@@ -22,7 +22,6 @@ class ToggleModeConfigStorageTest {
     private lateinit var dataStore: InMemoryPreferencesDataStore
     private lateinit var source: PreferencesDataSource
 
-
     private val simA = "sim-a"
     private val simB = "sim-b"
 
@@ -33,7 +32,6 @@ class ToggleModeConfigStorageTest {
         dataStore = InMemoryPreferencesDataStore()
         source = PreferencesDataSource(dataStore)
     }
-
 
     @Test
     fun `should default when nothing is stored`() = runTest {
@@ -55,15 +53,6 @@ class ToggleModeConfigStorageTest {
         )
     }
 
-
-
-
-
-
-
-
-
-
     @Test
     fun `should emit again when the same SIM's configuration changes`() = runTest {
         val seen = mutableListOf<ToggleModeConfig>()
@@ -77,9 +66,6 @@ class ToggleModeConfigStorageTest {
         assertEquals(defaults, seen.first())
         assertEquals(ToggleModeConfig(NetworkMode.GSM_ONLY, NetworkMode.LTE_ONLY), seen.last())
     }
-
-
-
 
     @Test
     fun `should observe writes for the same SIM`() = runTest {
@@ -99,5 +85,18 @@ class ToggleModeConfigStorageTest {
         }
 
         assertEquals(defaults, source.getToggleModeConfig(simA))
+    }
+
+    @Test
+    fun `should have no last applied mode until one is recorded`() = runTest {
+        assertNull(source.getLastAppliedMode(simA))
+    }
+
+    @Test
+    fun `should keep each SIM's last applied mode separate`() = runTest {
+        source.setLastAppliedMode(simA, NetworkMode.GSM_UMTS)
+
+        assertEquals(NetworkMode.GSM_UMTS, source.getLastAppliedMode(simA))
+        assertNull(source.getLastAppliedMode(simB))
     }
 }

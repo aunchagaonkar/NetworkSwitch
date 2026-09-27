@@ -1,6 +1,7 @@
 package com.supernova.networkswitch.data.repository
 
 import com.supernova.networkswitch.data.source.PreferencesDataSource
+import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ControlMethod
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
@@ -40,6 +41,14 @@ class PreferencesRepositoryImpl @Inject constructor(
         return preferencesDataSource.observeToggleModeConfig(simKey)
     }
     
+    override suspend fun getLastAppliedMode(simKey: String): NetworkMode? {
+        return preferencesDataSource.getLastAppliedMode(simKey)
+    }
+
+    override suspend fun setLastAppliedMode(simKey: String, mode: NetworkMode) {
+        preferencesDataSource.setLastAppliedMode(simKey, mode)
+    }
+
     override suspend fun getSelectedSubscriptionId(): Int {
         return preferencesDataSource.getSelectedSubscriptionId()
     }

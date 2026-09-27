@@ -3,15 +3,15 @@ package com.supernova.networkswitch.domain.usecase
 import android.telephony.SubscriptionManager
 import com.supernova.networkswitch.domain.model.CompatibilityState
 import com.supernova.networkswitch.domain.model.ControlMethod
-import com.supernova.networkswitch.domain.model.NetworkMode
-import com.supernova.networkswitch.domain.model.SimInfo
 import com.supernova.networkswitch.domain.model.SimConfigKey
 import com.supernova.networkswitch.domain.model.SimQueryResult
 import com.supernova.networkswitch.domain.model.SubscriptionSelection
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
+import com.supernova.networkswitch.domain.model.ToggleState
 import com.supernova.networkswitch.domain.repository.NetworkControlRepository
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import com.supernova.networkswitch.domain.repository.SimRepository
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
 class CheckCompatibilityUseCase @Inject constructor(
@@ -29,34 +29,41 @@ class ToggleNetworkModeUseCase @Inject constructor(
     private val networkControlRepository: NetworkControlRepository,
     private val preferencesRepository: PreferencesRepository
 ) {
-    suspend operator fun invoke(subId: Int): Result<NetworkMode> {
+    suspend operator fun invoke(subId: Int): Result<ToggleState> {
         return try {
-            val toggleConfig = preferencesRepository.getToggleModeConfig(SimConfigKey.forSubscription(subId))
+            val simKey = SimConfigKey.forSubscription(subId)
+            val config = preferencesRepository.getToggleModeConfig(simKey)
+            val actual = networkControlRepository.getCurrentNetworkMode(subId)
+            val target = config.resolve(actual, preferencesRepository.getLastAppliedMode(simKey)).next
 
-            // Read the mode this SIM is actually on: the target depends on it, and it
-            // may have been changed by another SIM's toggle or outside the app.
-            val actualMode = networkControlRepository.getCurrentNetworkMode(subId)
-            val targetMode = toggleConfig.nextAfter(actualMode)
+            networkControlRepository.setNetworkMode(subId, target).getOrElse { return Result.failure(it) }
+            try {
+                preferencesRepository.setLastAppliedMode(simKey, target)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The mode is already applied; the record is only a fallback for unreadable modes.
+            }
 
-            networkControlRepository.setNetworkMode(subId, targetMode).map { targetMode }
+            Result.success(config.resolve(target, null))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 }
 
-/**
- * Use case for getting current network mode
- */
-class GetCurrentNetworkModeUseCase @Inject constructor(
-    private val networkControlRepository: NetworkControlRepository
+class GetToggleStateUseCase @Inject constructor(
+    private val networkControlRepository: NetworkControlRepository,
+    private val preferencesRepository: PreferencesRepository
 ) {
-    suspend operator fun invoke(subId: Int): Result<NetworkMode?> {
-        return try {
-            Result.success(networkControlRepository.getCurrentNetworkMode(subId))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    suspend operator fun invoke(subId: Int): ToggleState {
+        val simKey = SimConfigKey.forSubscription(subId)
+        return preferencesRepository.getToggleModeConfig(simKey).resolve(
+            networkControlRepository.getCurrentNetworkMode(subId),
+            preferencesRepository.getLastAppliedMode(simKey)
+        )
     }
 }
 

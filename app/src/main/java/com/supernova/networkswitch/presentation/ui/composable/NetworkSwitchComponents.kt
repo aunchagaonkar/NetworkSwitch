@@ -125,6 +125,7 @@ fun NetworkToggleCard(
     currentMode: NetworkMode?,
     activeSimName: String?,
     toggleButtonText: String,
+    canToggle: Boolean,
     isLoading: Boolean,
     onToggleClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -167,7 +168,7 @@ fun NetworkToggleCard(
         
         Button(
             onClick = onToggleClick,
-            enabled = !isLoading && currentMode != null,
+            enabled = !isLoading && canToggle,
             modifier = Modifier.fillMaxWidth()
         ) {
             if (isLoading) {

@@ -105,6 +105,7 @@ private fun MainScreen(
                     currentMode = viewModel.currentNetworkMode,
                     activeSimName = viewModel.activeSimName,
                     toggleButtonText = viewModel.getToggleButtonText(),
+                    canToggle = viewModel.canToggle,
                     isLoading = viewModel.isLoading,
                     onToggleClick = { viewModel.toggleNetworkMode() }
                 )

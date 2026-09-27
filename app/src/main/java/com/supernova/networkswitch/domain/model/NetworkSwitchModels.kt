@@ -51,7 +51,14 @@ enum class NetworkMode(val displayName: String, val value: Int) {
     NR_LTE_TDSCDMA_WCDMA("3G/4G/5G (NR/LTE/TD-SCDMA/WCDMA)", 31),
     NR_LTE_TDSCDMA_GSM_WCDMA("2G/3G/4G/5G (NR/LTE/TD-SCDMA/GSM/WCDMA)", 32),
     NR_LTE_TDSCDMA_CDMA_EVDO_GSM_WCDMA("Global 5G + TD-SCDMA (All Networks)", 33);
-    
+
+    /**
+     * GSM_UMTS and WCDMA_PREF allow the same radios, so on Android 11+ they store the
+     * same bitmask and GSM_UMTS reads back as WCDMA_PREF.
+     */
+    infix fun sameRadiosAs(other: NetworkMode?): Boolean =
+        this == other || setOf(this, other) == setOf(WCDMA_PREF, GSM_UMTS)
+
     companion object {
         /**
          * Get NetworkMode by RIL constant value
@@ -85,14 +92,21 @@ data class ToggleModeConfig(
     val modeB: NetworkMode
 ) {
     /**
-     * The mode a toggle moves to, given the mode the radio is on.
-     *
-     * [actual] is null when the mode is unreadable, and is outside this pair when the
-     * SIM was configured elsewhere. Both target [modeA].
+     * Matches modes by [NetworkMode.sameRadiosAs]. When [actual] is unreadable, alternates
+     * from [lastApplied]; a mode outside the pair restarts at [modeA].
      */
-    fun nextAfter(actual: NetworkMode?): NetworkMode =
-        if (actual == modeA) modeB else modeA
+    fun resolve(actual: NetworkMode?, lastApplied: NetworkMode?): ToggleState = when {
+        modeA sameRadiosAs actual -> ToggleState(modeA, modeB)
+        modeB sameRadiosAs actual -> ToggleState(modeB, modeA)
+        actual == null && lastApplied == modeA -> ToggleState(null, modeB)
+        else -> ToggleState(actual, modeA)
+    }
 }
+
+data class ToggleState(
+    val current: NetworkMode?,
+    val next: NetworkMode
+)
 
 sealed class CompatibilityState {
     object Pending : CompatibilityState()

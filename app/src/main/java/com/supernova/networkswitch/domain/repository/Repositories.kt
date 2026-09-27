@@ -67,7 +67,14 @@ interface PreferencesRepository {
      * Observe toggle mode configuration changes
      */
     fun observeToggleModeConfig(simKey: String): Flow<ToggleModeConfig>
-    
+
+    /**
+     * The mode the app last set on this SIM; the fallback when the radio's mode cannot be read.
+     */
+    suspend fun getLastAppliedMode(simKey: String): NetworkMode?
+
+    suspend fun setLastAppliedMode(simKey: String, mode: NetworkMode)
+
     /**
      * Get the selected subscription ID for the SIM card
      * Returns [SubscriptionSelection.AUTO] if no specific SIM is selected

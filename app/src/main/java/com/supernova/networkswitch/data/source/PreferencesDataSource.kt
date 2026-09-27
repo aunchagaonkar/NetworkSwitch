@@ -26,6 +26,7 @@ class PreferencesDataSource @Inject constructor(
 
         private fun modeAKey(simKey: String) = intPreferencesKey("toggle_mode_a_$simKey")
         private fun modeBKey(simKey: String) = intPreferencesKey("toggle_mode_b_$simKey")
+        private fun lastAppliedModeKey(simKey: String) = intPreferencesKey("last_applied_mode_$simKey")
         private val SELECTED_SUBSCRIPTION_ID_KEY = intPreferencesKey("selected_subscription_id")
         
         private const val DEFAULT_CONTROL_METHOD = "SHIZUKU"
@@ -85,6 +86,17 @@ class PreferencesDataSource @Inject constructor(
             NetworkMode.fromValue(modeAValue) ?: DEFAULT_MODE_A,
             NetworkMode.fromValue(modeBValue) ?: DEFAULT_MODE_B
         )
+    }
+
+    suspend fun getLastAppliedMode(simKey: String): NetworkMode? {
+        val value = dataStore.data.first()[lastAppliedModeKey(simKey)] ?: return null
+        return NetworkMode.fromValue(value)
+    }
+
+    suspend fun setLastAppliedMode(simKey: String, mode: NetworkMode) {
+        dataStore.edit { preferences ->
+            preferences[lastAppliedModeKey(simKey)] = mode.value
+        }
     }
 
     

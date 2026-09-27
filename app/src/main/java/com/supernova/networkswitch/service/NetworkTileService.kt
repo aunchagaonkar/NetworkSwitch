@@ -4,12 +4,11 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
 import com.supernova.networkswitch.R
-import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.SimConfigKey
-import com.supernova.networkswitch.domain.model.ToggleModeConfig
+import com.supernova.networkswitch.domain.model.ToggleState
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
-import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.GetEffectiveSubscriptionIdUseCase
+import com.supernova.networkswitch.domain.usecase.GetToggleStateUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
@@ -32,7 +31,7 @@ import javax.inject.Inject
 class NetworkTileService : TileService() {
 
     @Inject
-    lateinit var getCurrentNetworkModeUseCase: GetCurrentNetworkModeUseCase
+    lateinit var getToggleStateUseCase: GetToggleStateUseCase
 
     @Inject
     lateinit var getEffectiveSubscriptionIdUseCase: GetEffectiveSubscriptionIdUseCase
@@ -51,8 +50,7 @@ class NetworkTileService : TileService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var listeningJob: Job? = null
 
-    private var currentNetworkMode: NetworkMode? = null
-    private var toggleConfig: ToggleModeConfig? = null
+    private var toggleState: ToggleState? = null
 
     override fun onStartListening() {
         super.onStartListening()
@@ -63,10 +61,7 @@ class NetworkTileService : TileService() {
                     .mapLatest { SimConfigKey.forSubscription(getEffectiveSubscriptionIdUseCase()) }
                     .distinctUntilChanged()
                     .flatMapLatest { preferencesRepository.observeToggleModeConfig(it) }
-                    .collect { newConfig ->
-                        toggleConfig = newConfig
-                        refreshNetworkState()
-                    }
+                    .collect { refreshNetworkState() }
             } catch (_: CancellationException) {
                 // Expected when the tile stops listening
             } catch (e: Exception) {
@@ -105,7 +100,7 @@ class NetworkTileService : TileService() {
                 withTimeout(TOGGLE_TIMEOUT_MS) {
                     val subId = getEffectiveSubscriptionIdUseCase()
                     toggleNetworkModeUseCase(subId)
-                        .onSuccess { newMode -> currentNetworkMode = newMode }
+                        .onSuccess { toggleState = it }
                         .onFailure { e -> Log.e(TAG, "Tile: Toggle failed", e) }
                 }
             } catch (e: Exception) {
@@ -118,12 +113,9 @@ class NetworkTileService : TileService() {
 
     private suspend fun refreshNetworkState() {
         try {
-            // Use the user's selected subscription ID (or default if "Auto" selected)
-            val subId = getEffectiveSubscriptionIdUseCase()
-            
-            getCurrentNetworkModeUseCase(subId)
-                .onSuccess { networkMode -> currentNetworkMode = networkMode }
-                .onFailure { e -> Log.e(TAG, "Tile: Failed to read network mode", e) }
+            toggleState = getToggleStateUseCase(getEffectiveSubscriptionIdUseCase())
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Tile: Error refreshing network state", e)
         }
@@ -135,15 +127,12 @@ class NetworkTileService : TileService() {
         try {
             // Null outside the listening window; the next onStartListening repaints.
             val tile = qsTile ?: return
-            val config = toggleConfig
+            val state = toggleState
 
-            if (config != null) {
+            if (state != null) {
                 tile.state = Tile.STATE_ACTIVE
-                tile.label = currentNetworkMode?.displayName ?: getString(R.string.tile_not_loaded)
-                tile.subtitle = getString(
-                    R.string.tile_next_mode,
-                    config.nextAfter(currentNetworkMode).displayName,
-                )
+                tile.label = state.current?.displayName ?: getString(R.string.tile_not_loaded)
+                tile.subtitle = getString(R.string.tile_next_mode, state.next.displayName)
             } else {
                 tile.state = Tile.STATE_INACTIVE
                 tile.label = getString(R.string.network_switch)
