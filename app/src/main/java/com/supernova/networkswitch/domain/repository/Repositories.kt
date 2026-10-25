@@ -14,6 +14,11 @@ interface NetworkControlRepository {
      * Check if network control is compatible with current device/method
      */
     suspend fun checkCompatibility(method: ControlMethod): CompatibilityState
+
+    /**
+     * Ask for the permission the control method needs (root or Shizuku)
+     */
+    suspend fun requestPermission(method: ControlMethod): Boolean
     
     /**
      * Get current network mode
