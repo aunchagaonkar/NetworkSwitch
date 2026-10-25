@@ -18,6 +18,14 @@ class CheckCompatibilityUseCase @Inject constructor(
     }
 }
 
+class RequestPermissionUseCase @Inject constructor(
+    private val networkControlRepository: NetworkControlRepository
+) {
+    suspend operator fun invoke(method: ControlMethod): Boolean {
+        return networkControlRepository.requestPermission(method)
+    }
+}
+
 class ToggleNetworkModeUseCase @Inject constructor(
     private val networkControlRepository: NetworkControlRepository,
     private val preferencesRepository: PreferencesRepository

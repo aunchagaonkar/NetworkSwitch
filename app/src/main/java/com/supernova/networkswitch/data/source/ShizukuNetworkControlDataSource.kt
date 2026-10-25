@@ -57,6 +57,45 @@ class  ShizukuNetworkControlDataSource @Inject constructor(
         }
     }
 
+    /**
+     * Show Shizuku's permission dialog and wait for the answer
+     */
+    override suspend fun requestPermission(): Boolean {
+        try {
+            if (!Shizuku.pingBinder()) return false
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) return true
+            // The user chose "Deny" before: Shizuku won't show the dialog again,
+            // the app has to be allowed from Shizuku's own app list
+            if (Shizuku.shouldShowRequestPermissionRationale()) return false
+        } catch (e: Exception) {
+            return false
+        }
+
+        return suspendCancellableCoroutine { continuation ->
+            val listener = object : Shizuku.OnRequestPermissionResultListener {
+                override fun onRequestPermissionResult(requestCode: Int, grantResult: Int) {
+                    if (requestCode != SHIZUKU_PERMISSION_REQUEST_ID) return
+                    Shizuku.removeRequestPermissionResultListener(this)
+                    if (continuation.isActive) {
+                        continuation.resume(grantResult == PackageManager.PERMISSION_GRANTED)
+                    }
+                }
+            }
+            continuation.invokeOnCancellation {
+                Shizuku.removeRequestPermissionResultListener(listener)
+            }
+            Shizuku.addRequestPermissionResultListener(listener)
+            try {
+                Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_ID)
+            } catch (e: Exception) {
+                Shizuku.removeRequestPermissionResultListener(listener)
+                if (continuation.isActive) {
+                    continuation.resume(false)
+                }
+            }
+        }
+    }
+
     override suspend fun getCurrentNetworkMode(subId: Int): NetworkMode? {
         return if (ensureServiceBinding()) {
             try {

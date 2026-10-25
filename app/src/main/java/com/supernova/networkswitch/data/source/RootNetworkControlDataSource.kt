@@ -34,6 +34,8 @@ class RootNetworkControlDataSource @Inject constructor(
         }
     }
 
+    override suspend fun requestPermission(): Boolean = Utils.isRootGranted()
+
     override suspend fun getCurrentNetworkMode(subId: Int): NetworkMode? {
         return try {
             val controller = getNetworkController()

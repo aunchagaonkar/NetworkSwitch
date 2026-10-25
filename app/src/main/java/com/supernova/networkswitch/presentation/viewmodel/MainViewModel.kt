@@ -12,10 +12,12 @@ import com.supernova.networkswitch.domain.model.NetworkMode
 import com.supernova.networkswitch.domain.model.ToggleModeConfig
 import com.supernova.networkswitch.domain.usecase.CheckCompatibilityUseCase
 import com.supernova.networkswitch.domain.usecase.GetCurrentNetworkModeUseCase
+import com.supernova.networkswitch.domain.usecase.RequestPermissionUseCase
 import com.supernova.networkswitch.domain.usecase.ToggleNetworkModeUseCase
 import com.supernova.networkswitch.domain.usecase.UpdateControlMethodUseCase
 import com.supernova.networkswitch.domain.usecase.GetToggleModeConfigUseCase
 import com.supernova.networkswitch.domain.repository.PreferencesRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
@@ -28,6 +30,7 @@ class MainViewModel @Inject constructor(
     private val toggleNetworkModeUseCase: ToggleNetworkModeUseCase,
     private val updateControlMethodUseCase: UpdateControlMethodUseCase,
     private val getToggleModeConfigUseCase: GetToggleModeConfigUseCase,
+    private val requestPermissionUseCase: RequestPermissionUseCase,
     private val preferencesRepository: PreferencesRepository
 ) : ViewModel() {
     
@@ -49,6 +52,8 @@ class MainViewModel @Inject constructor(
     // Compatibility state using domain model
     var compatibilityState by mutableStateOf<CompatibilityState>(CompatibilityState.Pending)
         private set
+
+    private var retryJob: Job? = null
 
     init {
         observeControlMethodPreference()
@@ -102,10 +107,17 @@ class MainViewModel @Inject constructor(
     }
     
     /**
-     * Retry compatibility check
+     * Retry compatibility check, asking for the missing permission first
      */
     fun retryCompatibilityCheck() {
-        checkCompatibility()
+        if (retryJob?.isActive == true) return
+        retryJob = viewModelScope.launch {
+            val state = compatibilityState
+            if (state is CompatibilityState.PermissionDenied && state.method == ControlMethod.SHIZUKU) {
+                requestPermissionUseCase(state.method)
+            }
+            checkCompatibility()
+        }
     }
     
     /**

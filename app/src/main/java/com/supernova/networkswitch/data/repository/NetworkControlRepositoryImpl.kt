@@ -27,6 +27,10 @@ class NetworkControlRepositoryImpl @Inject constructor(
         return dataSource.checkCompatibility(subId)
     }
 
+    override suspend fun requestPermission(method: ControlMethod): Boolean {
+        return getDataSource(method).requestPermission()
+    }
+
     override suspend fun getCurrentNetworkMode(subId: Int): NetworkMode? {
         return try {
             val method = preferencesRepository.getControlMethod()

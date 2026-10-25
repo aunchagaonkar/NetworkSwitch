@@ -77,4 +77,41 @@ class SettingsViewModelTest {
         coVerify(exactly = 2) { networkControlRepository.checkCompatibility(ControlMethod.ROOT) }
         coVerify(exactly = 2) { networkControlRepository.checkCompatibility(ControlMethod.SHIZUKU) }
     }
+
+    @Test
+    fun `retryCompatibilityCheck requests Shizuku permission when it is denied`() = runTest {
+        coEvery { preferencesRepository.getControlMethod() } returns ControlMethod.SHIZUKU
+        coEvery { networkControlRepository.checkCompatibility(ControlMethod.SHIZUKU) } returns
+            CompatibilityState.PermissionDenied(ControlMethod.SHIZUKU)
+        createViewModel()
+
+        viewModel.retryCompatibilityCheck()
+
+        coVerify(exactly = 1) { networkControlRepository.requestPermission(ControlMethod.SHIZUKU) }
+        coVerify(exactly = 2) { networkControlRepository.checkCompatibility(ControlMethod.SHIZUKU) }
+    }
+
+    @Test
+    fun `retryCompatibilityCheck does not request permission when root is selected`() = runTest {
+        coEvery { preferencesRepository.getControlMethod() } returns ControlMethod.ROOT
+        coEvery { networkControlRepository.checkCompatibility(ControlMethod.SHIZUKU) } returns
+            CompatibilityState.PermissionDenied(ControlMethod.SHIZUKU)
+        createViewModel()
+
+        viewModel.retryCompatibilityCheck()
+
+        coVerify(exactly = 0) { networkControlRepository.requestPermission(any()) }
+    }
+
+    @Test
+    fun `retryCompatibilityCheck does not request permission when Shizuku is compatible`() = runTest {
+        coEvery { preferencesRepository.getControlMethod() } returns ControlMethod.SHIZUKU
+        coEvery { networkControlRepository.checkCompatibility(ControlMethod.SHIZUKU) } returns
+            CompatibilityState.Compatible
+        createViewModel()
+
+        viewModel.retryCompatibilityCheck()
+
+        coVerify(exactly = 0) { networkControlRepository.requestPermission(any()) }
+    }
 }

@@ -12,6 +12,7 @@ import com.supernova.networkswitch.domain.repository.PreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import javax.inject.Inject
@@ -38,6 +39,8 @@ class SettingsViewModel @Inject constructor(
     
     var shizukuCompatibility by mutableStateOf<CompatibilityState>(CompatibilityState.Pending)
         private set
+
+    private var retryJob: Job? = null
     
     init {
         checkAllCompatibility()
@@ -50,7 +53,15 @@ class SettingsViewModel @Inject constructor(
     }
     
     fun retryCompatibilityCheck() {
-        checkAllCompatibility()
+        if (retryJob?.isActive == true) return
+        retryJob = viewModelScope.launch {
+            if (shizukuCompatibility is CompatibilityState.PermissionDenied &&
+                preferencesRepository.getControlMethod() == ControlMethod.SHIZUKU
+            ) {
+                networkControlRepository.requestPermission(ControlMethod.SHIZUKU)
+            }
+            checkAllCompatibility()
+        }
     }
     
     private fun checkAllCompatibility() {
